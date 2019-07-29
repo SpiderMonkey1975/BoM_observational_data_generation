@@ -30,11 +30,9 @@ def prepare_dataframe( filename ):
 ##
 
 df_list = []
-#col_names = []
 for number, filename in enumerate(sorted(os.listdir('./')), start=1):
     if filename[-3:] == '.nc':
        df_list.append( prepare_dataframe( filename ) )
-#       col_names.append( filename[8:10] + "-" + filename[10:12] + " " + filename[13:15] + ":" + filename[15:17] )
 
 ##
 ## Merge all inidividual dataframes into a single global one
