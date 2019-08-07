@@ -12,10 +12,11 @@ def construct_model( input_layer, output_layer, num_gpu ):
     if num_gpu>1:
        with tf.device("/cpu:0"):
             model = Model( inputs=input_layer, outputs=output_layer )
-            model = multi_gpu_model( model, gpus=num_gpu )
+            parallel_model = multi_gpu_model( model, gpus=num_gpu )
     else:
        model = Model( inputs=input_layer, outputs=output_layer )
-    return model
+       parallel_model = model
+    return parallel_model, model
 
 ##
 ##-------------  FC-DenseNet stuff ----------------------------------------------

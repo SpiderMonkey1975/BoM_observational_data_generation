@@ -33,23 +33,22 @@ if args.neural_net!='basic_autoencoder' and args.neural_net!='unet' and args.neu
 ##
 
 if args.neural_net == 'tiramisu':
-   model = Tiramisu( input_shape=(2050,2450,1),
-                     n_filters_first_conv=args.num_filter,
-                     n_pool = 2,
-                     n_layers_per_block = [4,5,7,5,4] ) 
+   model, ref_model = Tiramisu( input_shape=(2050,2450,1),
+                                n_filters_first_conv=args.num_filter,
+                                n_pool = 2,
+                                n_layers_per_block = [4,5,7,5,4] ) 
 
 if args.neural_net == 'basic_autoencoder':
-    model = autoencoder( args.num_filter, args.num_gpu )
+    model, ref_model = autoencoder( args.num_filter, args.num_gpu )
 
 if args.neural_net == 'unet':
-    model = unet( args.num_filter, args.num_gpu )
+    model, ref_model = unet( args.num_filter, args.num_gpu )
 
 model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.0001), metrics=['mae'])
 
 if args.verbose != 0:
    model.summary()
    print( model.metrics_names )
-   sys.exit()
 
 ##
 ## Get a list of input data files
@@ -128,11 +127,14 @@ for epoch in range( args.epochs ):
     validation_mse_losses.append( valid_loss )
     epoch_time = (datetime.now()-t2 ).total_seconds()
 
-    print("Epoch %2d: training MSE: %4.3f validation MSE: %4.3f" % (epoch,train_loss,valid_loss))
+    save_str = ''
     if valid_loss < tol:
        tol = valid_loss
        weights_file = args.neural_net + '_model_weights.h5'
-       model.save_weights( weights_file )
+       ref_model.save_weights( weights_file )
+       save_str = '(model weights written to hard disk)'
+
+    print("Epoch %2d: training MSE: %4.3f validation MSE: %4.3f  %s" % (epoch,train_loss,valid_loss,save_str))
 
 total_time = (datetime.now()-t1 ).total_seconds()
 
