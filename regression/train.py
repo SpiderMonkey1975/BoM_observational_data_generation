@@ -49,6 +49,7 @@ model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.0001), metrics=['ma
 if args.verbose != 0:
    model.summary()
    print( model.metrics_names )
+   sys.exit()
 
 ##
 ## Get a list of input data files
@@ -99,7 +100,14 @@ def model_fit( model, start, end, batch_size, input_file_list, train_flag ):
         losses.append( output[1] )
 
     l = np.array( losses )
-    return np.amin( l )
+    return np.amax( l )
+
+##
+## Set the training-test split on the input data
+##
+
+#num_validation_batches = int(args.test_size * (file_count/args.batch_size))
+num_validation_batches = 10 
 
 ##
 ## Perform model training
@@ -107,8 +115,7 @@ def model_fit( model, start, end, batch_size, input_file_list, train_flag ):
 
 training_mse_losses = []
 validation_mse_losses = []
-
-num_validation_batches = 10
+tol = 10000.0
 
 t1 = datetime.now()
 for epoch in range( args.epochs ):
@@ -121,6 +128,10 @@ for epoch in range( args.epochs ):
     epoch_time = (datetime.now()-t2 ).total_seconds()
 
     print("Epoch %2d: training MSE: %4.3f validation MSE: %4.3f" % (epoch,train_loss,valid_loss))
+    if valid_loss < tol:
+       tol = valid_loss
+       weights_file = args.neural_net + '_model_weights.h5'
+       model.save_weights( weights_file )
 
 total_time = (datetime.now()-t1 ).total_seconds()
 
@@ -141,6 +152,7 @@ print(" ")
 print("   %s neural network design used with %3d initial filters" % (args.neural_net,args.num_filter))
 print("   1 channel of satellite temperature data used")
 print("   batch size of %2d images used" % args.batch_size)
+print("   validation size set to %2d images" % (num_validation_batches*args.batch_size) )
 print("   training lasted for %7.1f seconds" % total_time)
 print(" ")
 print("   Mean Absolute Error Metric")

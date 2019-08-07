@@ -18,21 +18,6 @@ def construct_model( input_layer, output_layer, num_gpu ):
 ##-------------  U-Net stuff ----------------------------------------------
 ##
 
-def unet_encoder_block( net, num_filters ):
-    net = MaxPooling2D(2)( net )
-    net = BatchNormalization(axis=3)( net )
-    net = Conv2D(num_filters, 3, strides=1, activation='relu', padding='same')(net)
-    net = Conv2D(num_filters, 3, strides=1, activation='relu', padding='same')(net)
-    return net
-
-def unet_decoder_block( net, conv, num_filters ):
-    net = UpSampling2D(2)(net)
-    net = concatenate( [net,conv],axis=3 )
-    net = Conv2D(num_filters, 3, strides=1, activation='relu', padding='same')(net)
-    net = Conv2D(num_filters, 3, strides=1, activation='relu', padding='same')(net)
-    net = BatchNormalization(axis=3)( net )
-    return net
-
 def unet( num_filters, num_gpus ):
     ''' Python function that defines a modified U-Net autoencoder neural net architecture
 
@@ -77,10 +62,6 @@ def unet( num_filters, num_gpus ):
     net = Conv2D(num_filters, 3, strides=1, activation='relu', padding='same')(net)
     net = Conv2D(num_filters, 3, strides=1, activation='relu', padding='same')(net)
     net = BatchNormalization(axis=3)( net )
-
-    #net = conv_list[4]
-    #for n in range(3,-1,-1):
-    #    net = unet_decoder_block( net, conv_list[n], num_filters*(2**n) )
 
     net = Conv2D(1, 3, strides=1, activation='relu', padding='same')(net)
 
