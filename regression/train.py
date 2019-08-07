@@ -106,8 +106,9 @@ def model_fit( model, start, end, batch_size, input_file_list, train_flag ):
 ## Set the training-test split on the input data
 ##
 
-#num_validation_batches = int(args.test_size * (file_count/args.batch_size))
-num_validation_batches = 10 
+num_batches = file_count / args.batch_size
+num_validation_batches = int(args.test_size * num_batches)
+num_validation_images = num_validation_batches * args.batch_size
 
 ##
 ## Perform model training
@@ -120,10 +121,10 @@ tol = 10000.0
 t1 = datetime.now()
 for epoch in range( args.epochs ):
     t2 = datetime.now()
-    train_loss = model_fit( model, num_validation_batches, file_count, args.batch_size, input_file_list, 1 )
+    train_loss = model_fit( model, num_validation_images, file_count, args.batch_size, input_file_list, 1 )
     training_mse_losses.append( train_loss )
 
-    valid_loss = model_fit( model, 0, num_validation_batches, args.batch_size, input_file_list, 0 )
+    valid_loss = model_fit( model, 0, num_validation_images, args.batch_size, input_file_list, 0 )
     validation_mse_losses.append( valid_loss )
     epoch_time = (datetime.now()-t2 ).total_seconds()
 
@@ -149,10 +150,10 @@ print("=========================================================================
 print("                          Rainfall Regression Network")
 print("=====================================================================================")
 print(" ")
-print("   %s neural network design used with %3d initial filters" % (args.neural_net,args.num_filter))
+print("   %s neural network design used with %2d initial filters" % (args.neural_net,args.num_filter))
 print("   1 channel of satellite temperature data used")
 print("   batch size of %2d images used" % args.batch_size)
-print("   validation size set to %2d images" % (num_validation_batches*args.batch_size) )
+print("   validation size set to %2d images" % num_validation_images )
 print("   training lasted for %7.1f seconds" % total_time)
 print(" ")
 print("   Mean Absolute Error Metric")
