@@ -7,6 +7,13 @@
 #SBATCH --account=director2107
 #SBATCH --export=MYSCRATCH,MYGROUP
 
+CONTAINER=/group/director2107/mcheeseman/tensorflow_1.14.0-gpu-py3.sif
+NUM_FILTERS=8
+
+##====================================================================================================
+##---------------------------    Do not change anything below this line    ---------------------------
+##====================================================================================================
+
 ##
 ## Set up Singularity
 ##
@@ -16,4 +23,17 @@ module load singularity/3.3.0
 export SINGULARITY_CACHEDIR=$MYGROUP
 export SINGULARITY_TMPDIR=$MYSCRATCH
 
-srun -n 1 --export=ALL -u singularity exec --nv --bind /group /group/director2107/mcheeseman/tensorflow_1.14.0-gpu-py3.sif python3 ./train.py -f 8 -g 4
+##
+## Tensorflow configurations
+##
+
+export XLA_FLAGS=--xla_hlo_profile
+export TF_XLA_FLAGS=--tf_xla_cpu_global_jit 
+
+##
+## Determine number of GPUs present in SLURM allocation
+##
+
+IFS=',' read -ra gpus <<< "$CUDA_VISIBLE_DEVICES"
+
+srun -n 1 --export=ALL -u singularity exec --nv --bind /group $(CONTAINER) python3 ./train.py -f $(NUM_FILTERS) -g ${#gpus[@]}

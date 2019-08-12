@@ -117,13 +117,15 @@ hist = model.fit( x, y,
                   shuffle=True )
 training_time = (datetime.now()-t1 ).total_seconds()
 
-val_loss = hist.history['val_mean_absolute_error']
-min_val_loss = 10000000.0
-ind = -1
-for n in range(len(val_loss)):
-       if val_loss[n] < min_val_loss:
-          min_val_loss = val_loss[n]
-          ind = n+1
+##
+## Find minimum values of the training and validation errors (and associated indices)
+##
+
+min_training_mae = np.amin( hist.history['mean_absolute_error'] )
+min_training_mae_index = np.where( hist.history['mean_absolute_error'] == min_training_mae )
+
+min_validation_mae = np.amin( hist.history['val_mean_absolute_error'] )
+min_validation_mae_index = np.where( hist.history['val_mean_absolute_error'] == min_validation_mae )
 
 print(" ")
 print(" ")
@@ -137,12 +139,15 @@ print("   batch size of %2d images used" % args.batch_size)
 print("   training lasted for %7.1f seconds" % training_time)
 print(" ")
 print("   Mean Absolute Error Metric")
-print("       minimum observed during validation was %4.3f at Epoch %2d" % (min_val_loss,ind))
+print("       minimum observed during training was %4.3f at Epoch %2d" % (min_training_mae,int(min_training_mae_index[0])))
+print("       minimum observed during validation was %4.3f at Epoch %2d" % (min_validation_mae,int(min_validation_mae_index[0])))
 print(" ")
 
 ##
 ## Output plot of training and validation errors
 ##
+
+plot_filename = 'errors_' + args.neural_net + "_" + str(args.num_filter) + "filters.png"
 
 plt.plot( hist.history['mean_absolute_error'], color='r' )
 plt.plot( hist.history['val_mean_absolute_error'], color='b' )
@@ -150,5 +155,5 @@ plt.xlabel('Epoch')
 plt.ylabel('Mean Absolute Error')
 plt.title('Model Error')
 plt.legend(['Training','Validation'], loc='upper right')
-plt.savefig( 'losses.png', transparent=True )
+plt.savefig( plot_filename, transparent=True )
 
