@@ -1,0 +1,19 @@
+#!/bin/bash --login
+#SBATCH --partition=gpuq
+#SBATCH --nodes=1
+#SBATCH --gres=gpu:4
+#SBATCH --constraint=p100
+#SBATCH --time=08:00:00
+#SBATCH --account=director2107
+#SBATCH --export=MYSCRATCH,MYGROUP
+
+##
+## Set up Singularity
+##
+
+module load singularity/3.3.0
+
+export SINGULARITY_CACHEDIR=$MYGROUP
+export SINGULARITY_TMPDIR=$MYSCRATCH
+
+srun -n 1 --export=ALL -u singularity exec --nv --bind /group /group/director2107/mcheeseman/tensorflow_1.14.0-gpu-py3.sif python3 ./train.py -f 8 -g 4
