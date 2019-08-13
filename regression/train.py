@@ -12,6 +12,10 @@ from basic_autoencoder import autoencoder
 from unet import unet
 from fc_densenet import Tiramisu
 
+sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/plotting_routines')
+from plotting_routines import plot_model_errors, plot_images 
+
+
 ##
 ## Look for any user specified commandline arguments
 ##
@@ -27,6 +31,13 @@ args = parser.parse_args()
 
 if args.neural_net!='basic_autoencoder' and args.neural_net!='unet' and args.neural_net!='tiramisu':
    args.neural_net = 'basic_autoencoder'
+
+if args.neural_net!='unet':
+   if args.batch_size > 5:
+      args.batch_size = 5
+   if args.num_filter < 16:
+      args.num_filter = 16
+
 
 ##
 ## Form the neural network
@@ -62,8 +73,6 @@ for fn in glob.iglob(cmd_str, recursive=True):
 input_file_list.sort()
 input_file_list = list(dict.fromkeys(input_file_list))
 
-input_file_list = input_file_list[ :400 ]
-
 if args.verbose != 0:
    print('# of input files located: ', len(input_file_list))
 
@@ -81,7 +90,8 @@ def read_input_file( filename ):
 x = np.zeros((len(input_file_list),2050,2450,1))
 y = np.zeros((len(input_file_list),2050,2450,1))
 
-for n in range( len(input_file_list) ):
+#for n in range( len(input_file_list) ):
+for n in range( 400 ):
     x[ n,:,:,0 ], y[ n,:,:,0 ] = read_input_file( input_file_list[n] )
 
 ##
@@ -95,8 +105,9 @@ if args.num_gpu == 1:
                                  save_best_only=True, 
                                  mode='min' )
 
-earlystop = EarlyStopping( min_delta=0.5,
-                           patience=2,
+earlystop = EarlyStopping( min_delta=0.0001,
+                           monitor='val_mean_absolute_error', 
+                           patience=10,
                            mode='min' )
 
 history = History()
@@ -147,13 +158,29 @@ print(" ")
 ## Output plot of training and validation errors
 ##
 
-plot_filename = 'errors_' + args.neural_net + "_" + str(args.num_filter) + "filters.png"
+plot_model_errors( args.neural_net, args.num_filter, hist )
 
-plt.plot( hist.history['mean_absolute_error'], color='r' )
-plt.plot( hist.history['val_mean_absolute_error'], color='b' )
-plt.xlabel('Epoch')
-plt.ylabel('Mean Absolute Error')
-plt.title('Model Error')
-plt.legend(['Training','Validation'], loc='upper right')
-plt.savefig( plot_filename, transparent=True )
+#plot_filename = 'errors_' + args.neural_net + "_" + str(args.num_filter) + "filters.png"
+
+#plt.plot( hist.history['mean_absolute_error'], color='r' )
+#plt.plot( hist.history['val_mean_absolute_error'], color='b' )
+#plt.xlabel('Epoch')
+#plt.ylabel('Mean Absolute Error')
+#plt.title('Model Error')
+#plt.legend(['Training','Validation'], loc='upper right')
+#plt.savefig( plot_filename, transparent=True )
+
+##
+## Compare radar data versus generated rainfall fields from trained neural net
+##
+
+x = np.zeros((5,2050,2450,1))
+real_rainfall = np.zeros((5,2050,2450,1))
+
+for n in range( 500,506 ):
+    x[ n,:,:,0 ], real_rainfall[ n,:,:,0 ] = read_input_file( input_file_list[n] )
+
+fake_images = model.predict( x, batch_size=1, verbose=0 )
+
+plot_images( real_images, fake_images, args.neural_net, args.num_filter )
 
