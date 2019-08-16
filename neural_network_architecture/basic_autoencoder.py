@@ -24,7 +24,7 @@ def autoencoder( num_filters, num_gpus ):
         INPUT: num_filters -> # of filters in the first convolutional layer
                num_gpus    -> # of GPUs used in training the network
     '''
-    input_layer = Input(shape = (2050, 2450, 1))
+    input_layer = Input(shape = (2050, 2450, 10))
     net = BatchNormalization(axis=3)( input_layer )
 
     # Encoding section

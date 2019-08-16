@@ -117,20 +117,23 @@ def plot_images( real_images, fake_images, net_type, num_filters ):
 ###-----------------------  Error plotting ------------------------
 ###
 
-def plot_model_errors( arch, num_filters, hist ):
+def plot_model_errors( arch, num_filters, training_error, validation_error ):
     '''
       Python function that plots training and validation mean absolute error for a 
       given neural network architecture.
 
-      INPUTS:        arch -> string describing the neural network architecture used
-              num_filters -> # of convolutional filters in first CNN layer of the neural net
-                     hist -> Keras model history object
+      INPUTS:             arch -> string describing the neural network architecture used
+                   num_filters -> # of convolutional filters in first CNN layer of the neural net
+                training_error -> array of training error values
+              validation_error -> array of validation error values
     '''
 
     plot_filename = 'errors_' + arch + "_" + str(num_filters) + "filters.png"
 
-    plt.plot( hist.history['mean_absolute_error'], color='r' )
-    plt.plot( hist.history['val_mean_absolute_error'], color='b' )
+    #plt.plot( hist.history['mean_absolute_error'], color='r' )
+    #plt.plot( hist.history['val_mean_absolute_error'], color='b' )
+    plt.plt( training_error, color='r' )
+    plt.plt( validation_error, color='b' )
     plt.xlabel('Epoch')
     plt.ylabel('Mean Absolute Error')
     plt.title('Model Error')

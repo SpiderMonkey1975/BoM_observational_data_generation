@@ -26,7 +26,7 @@ def unet( num_filters, num_gpus ):
                num_gpus    -> # of GPUs used in training the network
     '''
 
-    input_layer = Input(shape = (2050, 2450, 1))
+    input_layer = Input(shape = (2050, 2450, 10))
 
     net = Conv2D( 1, 3, strides=1, activation='relu', padding='same')(input_layer)
     net = Conv2D(num_filters, 3, strides=1, activation='relu', padding='same')(net)
