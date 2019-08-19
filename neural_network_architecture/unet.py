@@ -19,14 +19,19 @@ def construct_model( input_layer, output_layer, num_gpu ):
 ##-------------  U-Net stuff ----------------------------------------------
 ##
 
-def unet( num_filters, num_gpus ):
+def unet( image_dims, num_filters, num_gpus ):
     ''' Python function that defines a modified U-Net autoencoder neural net architecture
 
-        INPUT: num_filters -> # of filters in the first convolutional layer
+        INPUT: image_dims  -> 3D array containing the input image dimensions as so:
+                              dim[0] => image width
+                              dim[1] => image height
+                              dim[2] => number of channels in image 
+               num_filters -> # of filters in the first convolutional layer
                num_gpus    -> # of GPUs used in training the network
     '''
 
-    input_layer = Input(shape = (2050, 2450, 10))
+    #input_layer = Input(shape = (2050, 2450, 10))
+    input_layer = Input(shape = (images_dims[0], image_dims[1], image_dims[2]))
 
     net = Conv2D( 1, 3, strides=1, activation='relu', padding='same')(input_layer)
     net = Conv2D(num_filters, 3, strides=1, activation='relu', padding='same')(net)

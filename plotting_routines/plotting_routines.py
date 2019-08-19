@@ -132,8 +132,8 @@ def plot_model_errors( arch, num_filters, training_error, validation_error ):
 
     #plt.plot( hist.history['mean_absolute_error'], color='r' )
     #plt.plot( hist.history['val_mean_absolute_error'], color='b' )
-    plt.plt( training_error, color='r' )
-    plt.plt( validation_error, color='b' )
+    plt.plot( training_error, color='r' )
+    plt.plot( validation_error, color='b' )
     plt.xlabel('Epoch')
     plt.ylabel('Mean Absolute Error')
     plt.title('Model Error')

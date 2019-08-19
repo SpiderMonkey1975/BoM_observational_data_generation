@@ -29,6 +29,7 @@ parser.add_argument('-b', '--batch_size', type=int, default=10, help="set the ba
 parser.add_argument('-n', '--neural_net', type=str, default='basic_autoencoder', help="set neural network design. Valid values are basic_autoencoder, unet and tiramisu")
 parser.add_argument('-t', '--test_size', type=float, default=0.2, help="set fraction of input batches used for testing")
 parser.add_argument('-z', '--num_files', type=int, default=390, help="set number of input files to be read in per block of training")
+parser.add_argument('-c', '--num_channels', type=int, default=10, help="set number of channels for each satellite input image")
 args = parser.parse_args()
 
 if args.neural_net!='basic_autoencoder' and args.neural_net!='unet' and args.neural_net!='tiramisu':
@@ -40,15 +41,25 @@ if args.neural_net!='unet':
    if args.num_filter < 16:
       args.num_filter = 16
 
+if args.num_channels<1:
+   args.num_channels=1
+if args.num_channels>10:
+   args.num_channels=10
+
 ##
 ## Form the neural network
 ##
 
+image_dims = np.empty((3,),dtype=np.int)
+image_dims[0] = 2050
+image_dims[1] = 2450
+image_dims[2] = args.num_channels 
+
 if args.neural_net == 'basic_autoencoder':
-    model, ref_model = autoencoder( args.num_filter, args.num_gpu )
+    model, ref_model = autoencoder( image_dims, args.num_filter, args.num_gpu )
 
 if args.neural_net == 'unet':
-    model, ref_model = unet( args.num_filter, args.num_gpu )
+    model, ref_model = unet( image_dims, args.num_filter, args.num_gpu )
 
 model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.0001), metrics=['mae'])
 
@@ -90,10 +101,12 @@ for fn in glob.iglob(cmd_str, recursive=True):
 input_file_list = list(dict.fromkeys(input_file_list))
 shuffle( input_file_list )
 
-input_file_list = input_file_list[ :20 ]
-
 if args.verbose != 0:
    print('# of input files located: ', len(input_file_list))
+
+num_training_images = 4000
+training_input_file_list = input_file_list[ :num_training_images ]
+test_input_file_list = input_file_list[ num_training_images:num_training_images+6 ]
 
 ##
 ## Perform the training
@@ -101,9 +114,9 @@ if args.verbose != 0:
 
 def read_input_file( filename ):
     fid = nc.Dataset( filename, 'r' )
-    x = np.zeros((2050,2450,10))
+    x = np.zeros((image_dims[0],image_dims[1],image_dims[2]))
     idx = 7
-    for n in range(10):
+    for n in range(image_dims[2]):
         if idx<10:
            varname = 'channel_000' + str(idx) + '_brightness_temperature'
         else:
@@ -116,8 +129,8 @@ def read_input_file( filename ):
 
 def perform_training_block( model, input_files, batch_size ):
 
-    x = np.zeros((len(input_files),2050,2450,10))
-    y = np.zeros((len(input_files),2050,2450,1))
+    x = np.zeros((len(input_files),image_dims[0],image_dims[1],image_dims[2]))
+    y = np.zeros((len(input_files),image_dims[0],image_dims[1],1))
 
     n = 0
     for fid in input_files:
@@ -134,28 +147,23 @@ def perform_training_block( model, input_files, batch_size ):
 
     return hist
 
-training_input_file_list = input_file_list[ :3000 ]
-test_input_file_list = input_file_list[ 4000:4006 ]
-
 training_errors = []
 validation_errors = []
 
+t1 = datetime.now()
 for i in range( 0,len(training_input_file_list),args.num_files ):
     j = i + args.num_files
-    if j > len(input_file_list):
-       j = len(input_file_list)
+    if j > len(training_input_file_list):
+       j = len(training_input_file_list)
 
-    t1 = datetime.now()
     hist = perform_training_block( model, training_input_file_list[i:j], args.batch_size )
-    training_time = (datetime.now()-t1 ).total_seconds()
-    print("   block of input files %4d - %4d trained for %7.1f seconds" % (i, j, training_time))
+    print("   block of input files %4d - %4d trained" % (i, j))
 
-    print( len(hist.history['mean_absolute_error']) )
-    training_errors.append( hist.history['mean_absolute_error'] )
-    validation_errors.append( hist.history['val_mean_absolute_error'] )
+    training_errors = training_errors + hist.history['mean_absolute_error']
+    validation_errors = validation_errors + hist.history['val_mean_absolute_error']
 
-print( len(training_errors) )
-#print( training_errors.shape, validation_errors.shape )
+training_time = (datetime.now()-t1 ).total_seconds()
+print("   training took %7.1f seconds" % training_time)
 
 plot_model_errors( args.neural_net, args.num_filter, training_errors, validation_errors )
 
@@ -163,13 +171,14 @@ plot_model_errors( args.neural_net, args.num_filter, training_errors, validation
 ## Compare radar data versus generated rainfall fields from trained neural net
 ##
 
-#x = np.zeros((5,2050,2450,1))
-#real_rainfall = np.zeros((5,2050,2450,1))
+satellite_input = np.zeros((5,image_dims[0],image_dims[1],image_dims[2]))
+real_rainfall = np.zeros((5,image_dims[0],image_dims[1],1))
 
-#for n in range( 5 ):
-#    x[ n,:,:,0 ], real_rainfall[ n,:,:,0 ] = read_input_file( test_input_file_list[n] )
+for n in range( 5 ):
+    satellite_input[ n,:,:,: ], real_rainfall[ n,:,:,0 ] = read_input_file( test_input_file_list[n] )
 
-#fake_images = model.predict( x, batch_size=1, verbose=0 )
-
-#plot_images( real_images, fake_images, args.neural_net, args.num_filter )
+plot_images( real_rainfall, 
+             model.predict( satellite_input, batch_size=1, verbose=0 ), 
+             args.neural_net, 
+             args.num_filter )
 

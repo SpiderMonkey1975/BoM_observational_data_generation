@@ -18,13 +18,19 @@ def construct_model( input_layer, output_layer, num_gpu ):
        parallel_model = model
     return parallel_model, model
 
-def autoencoder( num_filters, num_gpus ):
+def autoencoder( image_dims, num_filters, num_gpus ):
     ''' Python function that defines a simple encoder-decoder neural network design
 
-        INPUT: num_filters -> # of filters in the first convolutional layer
+        INPUT: image_dims  -> 3D array containing the input image dimensions as so:
+                              dim[0] => image width
+                              dim[1] => image height
+                              dim[2] => number of channels in image 
+               num_filters -> # of filters in the first convolutional layer
                num_gpus    -> # of GPUs used in training the network
     '''
-    input_layer = Input(shape = (2050, 2450, 10))
+
+    #input_layer = Input(shape = (2050, 2450, 10))
+    input_layer = Input(shape = (image_dims[0], image_dims[1], image_dims[2]))
     net = BatchNormalization(axis=3)( input_layer )
 
     # Encoding section
