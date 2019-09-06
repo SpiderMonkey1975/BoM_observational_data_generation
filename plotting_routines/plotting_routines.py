@@ -79,7 +79,11 @@ def plot_images( real_images, fake_images, net_type, num_filters ):
 
     newcmp = create_colormap()
     
-    filename = 'rainfall_regression_' + net_type + '_' + str(num_filters) + 'filters.png'
+    if net_type == 'fully_connected':
+        filename = 'rainfall_regression_' + net_type + 'filters.png'
+    else:
+        filename = 'rainfall_regression_' + net_type + '_' + str(num_filters) + 'filters.png'
+
     img_cols = real_images.shape[1] 
     img_rows = real_images.shape[2]
     plt.figure(figsize=(12,4))
@@ -105,8 +109,51 @@ def plot_images( real_images, fake_images, net_type, num_filters ):
                    plt.text( 0, 0, 'Basic Autoencoder Output', fontsize=14 )
                 elif net_type == 'unet':
                    plt.text( 0, 0, 'U-Net Output', fontsize=14 )
+                elif net_type == 'fully_connected':
+                   plt.text( 0, 0, 'Fully Connected', fontsize=14 )
                 else:
                    plt.text( 0, 0, 'FC-DenseNet Output', fontsize=14 )
+            if i == 4:
+               plt.colorbar()
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close('all')
+
+def image_check_plots( radar_images, satellite_images ):
+    '''
+      Python function that plot a set of 5 images from the input high resolution radar data and 
+      Himawari-8 satellite input data.
+
+      INPUTS:       radar_images -> set of 5 images of precipitaion from high-res radar
+                satellite_images -> set of 5 images of reflectance data from the Himawari
+                                    satellite input
+    '''
+
+    newcmp = create_colormap()
+
+    filename = 'input_image_check.png'
+    img_cols = radar_images.shape[1]
+    img_rows = radar_images.shape[2]
+    plt.figure(figsize=(12,4))
+    for i in range(radar_images.shape[0]):
+            plt.subplot(2, 5, i+1)
+            image = radar_images[ i,:,: ]
+            image = np.reshape(image, [img_rows,img_cols])
+            plt.imshow(image, cmap=newcmp)
+            plt.axis('off')
+            if i == 0:
+               plt.text( 0, 0, 'Radar Precipitation Input', fontsize=14 )
+            if i == 4:
+               plt.colorbar()
+
+    for i in range(satellite_images.shape[0]):
+            plt.subplot(2, 5, i+6)
+            image = satellite_images[ i,:,: ]
+            image = np.reshape(image, [img_rows, img_cols])
+            plt.imshow(image, cmap=newcmp)
+            plt.axis('off')
+            if i == 0:
+               plt.text( 0, 0, 'Himawari Reflectance Input', fontsize=14 )
             if i == 4:
                plt.colorbar()
     plt.tight_layout()
@@ -134,6 +181,26 @@ def plot_model_errors( arch, num_filters, training_error, validation_error ):
     #plt.plot( hist.history['val_mean_absolute_error'], color='b' )
     plt.plot( training_error, color='r' )
     plt.plot( validation_error, color='b' )
+    plt.xlabel('Epoch')
+    plt.ylabel('Mean Absolute Error')
+    plt.title('Model Error')
+    plt.legend(['Training','Validation'], loc='upper right')
+    plt.savefig( plot_filename, transparent=True )
+    plt.close('all')
+
+def plot_fc_model_errors( arch, hist ):
+    '''
+      Python function that plots training and validation mean absolute error for a
+      given neural network architecture.
+
+      INPUTS: arch -> string describing the neural network architecture used
+              hist -> model history object generated during the training phase
+    '''
+
+    plot_filename = 'errors_' + arch + ".png"
+
+    plt.plot( hist.history['mean_absolute_error'], color='r' )
+    plt.plot( hist.history['val_mean_absolute_error'], color='b' )
     plt.xlabel('Epoch')
     plt.ylabel('Mean Absolute Error')
     plt.title('Model Error')

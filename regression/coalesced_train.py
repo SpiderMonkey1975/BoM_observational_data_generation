@@ -13,7 +13,7 @@ sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_genera
 from fully_connected import simple_net
 
 sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/plotting_routines')
-from plotting_routines import plot_model_errors, plot_images 
+from plotting_routines import plot_fc_model_errors, plot_images 
 
 
 ##
@@ -74,11 +74,10 @@ for fn in glob.iglob(cmd_str, recursive=True):
 
 input_file_list = list(dict.fromkeys(input_file_list))
 shuffle( input_file_list )
-print('# of input files located: ', len(input_file_list))
 
-num_training_images = 950
+num_training_images = len(input_file_list) - 5 
 training_input_file_list = input_file_list[ :num_training_images ]
-test_input_file_list = input_file_list[ num_training_images:num_training_images+6 ]
+test_input_file_list = input_file_list[ num_training_images: ]
 
 ##
 ## Perform the training
@@ -95,36 +94,47 @@ def read_input_file( filename ):
     fid.close()
     return x, y
 
-def perform_training_block( model, input_files, batch_size ):
 
-    x = np.empty((len(input_files),input_dims[0],10))
-    y = np.empty((len(input_files),input_dims[0]))
-
-    t2 = datetime.now()
-    n = 0
-    for fid in input_files:
-        x[ n,:,: ], y[ n,: ] = read_input_file( fid )
-        n = n + 1
-    io_time = (datetime.now()-t2 ).total_seconds()
-   
-    hist = model.fit( x, y, 
-                      batch_size=batch_size,
-                      epochs=500, 
-                      verbose=2, 
-                      validation_split=.125,
-                      callbacks=my_callbacks, 
-                      shuffle=False )
-    return hist
-
-training_errors = []
-validation_errors = []
+x = np.empty((len(num_training_images),input_dims[0],10))
+y = np.empty((len(num_training_images),input_dims[0]))
 
 t1 = datetime.now()
-hist = perform_training_block( model, training_input_file_list, args.batch_size )
-training_errors = hist.history['mean_absolute_error']
-validation_errors = hist.history['val_mean_absolute_error']
+for n in range(num_training_images):
+    x[ n,:,: ], y[ n,: ] = read_input_file( training_input_file_list[n] )
+io_time = (datetime.now()-t1 ).total_seconds()
+   
+hist = model.fit( x, y, 
+                  batch_size=args.batch_size,
+                  epochs=500, 
+                  verbose=2, 
+                  validation_split=.125,
+                  callbacks=my_callbacks, 
+                  shuffle=False )
 training_time = (datetime.now()-t1 ).total_seconds()
+
 print("   training took %7.1f seconds" % training_time)
+print("   I/O took %7.1f seconds" % io_time)
 
 plot_model_errors( 'simple_fully_connected', -1, training_errors, validation_errors )
+
+##
+## Perform inference on test set for accuracy check
+##
+
+x = np.empty((5,input_dims[0],10))
+y = np.empty((5,input_dims[0]))
+
+t1 = datetime.now()
+for n in range(5):
+    x[ n,:,: ], y[ n,: ] = read_input_file( test_input_file_list[n] )
+io_time = (datetime.now()-t1 ).total_seconds()
+
+t1 = datetime.now()
+output = model.predict( x, batch_size=args.batch_size, verbose=0 )
+inference_time = (datetime.now()-t1 ).total_seconds()
+
+print("   inference took %5.4f seconds" % inference_time)
+print("   I/O took %5.4f seconds" % io_time)
+
+plot_images( y, output, 'fully_connected', -1 )
 
