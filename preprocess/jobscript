@@ -1,14 +1,12 @@
 #!/bin/bash --login
-#SBATCH --partition=gpuq-dev
+#SBATCH --partition=workq
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:4
-#SBATCH --constraint=p100
-#SBATCH --time=01:00:00
+#SBATCH --ntasks=1
+#SBATCH --time=10:00:00
 #SBATCH --account=director2107
 #SBATCH --export=MYSCRATCH,MYGROUP
 
-CONTAINER=/group/director2107/mcheeseman/tensorflow_1.14.0-gpu-py3.sif
-NUM_INPUT_FILES_PER_BLOCK=450
+CONTAINER=/group/director2107/mcheeseman/BoM_observational_data_generation/preprocess/gdal_python3.sif
 
 ##====================================================================================================
 ##---------------------------    Do not change anything below this line    ---------------------------
@@ -24,16 +22,8 @@ export SINGULARITY_CACHEDIR=$MYGROUP
 export SINGULARITY_TMPDIR=$MYSCRATCH
 
 ##
-## Tensorflow configurations
+## Run preprocessing script
 ##
 
-export XLA_FLAGS=--xla_hlo_profile
-export TF_XLA_FLAGS=--tf_xla_cpu_global_jit 
+srun -n 1 --export=ALL -u singularity exec --bind /group,/scratch $CONTAINER python3 ./test.py 
 
-##
-## Determine number of GPUs present in SLURM allocation
-##
-
-IFS=',' read -ra gpus <<< "$CUDA_VISIBLE_DEVICES"
-
-srun -n 1 --export=ALL -u singularity exec --nv --bind /group $CONTAINER python3 ./coalesced_train.py -g ${#gpus[@]} 

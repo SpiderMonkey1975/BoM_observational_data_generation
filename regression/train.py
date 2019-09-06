@@ -22,15 +22,15 @@ from plotting_routines import plot_model_errors, plot_images
 ##
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-g', '--num_gpu', type=int, default=1, help="set number of GPUs to be used for training")
-parser.add_argument('-f', '--num_filter', type=int, default=32, help="set initial number of filters used in CNN layers for the neural networks")
+parser.add_argument('-g', '--num_gpu', type=int, default=4, help="set number of GPUs to be used for training")
+parser.add_argument('-f', '--num_filter', type=int, default=16, help="set initial number of filters used in CNN layers for the neural networks")
 parser.add_argument('-v', '--verbose', type=int, default=0, help="set to 1 if additional debugging info desired")
 parser.add_argument('-b', '--batch_size', type=int, default=10, help="set the batch size used in training")
 parser.add_argument('-n', '--neural_net', type=str, default='basic_autoencoder', help="set neural network design. Valid values are basic_autoencoder and unet")
 parser.add_argument('-t', '--test_size', type=float, default=0.2, help="set fraction of input batches used for testing")
 parser.add_argument('-l', '--learn_rate', type=float, default=0.0001, help="set learn rate for the optimizer")
-parser.add_argument('-z', '--num_files', type=int, default=390, help="set number of input files to be read in per block of training")
-parser.add_argument('-c', '--num_channels', type=int, default=1, help="set number of channels for each satellite input image")
+parser.add_argument('-z', '--num_files', type=int, default=100, help="set number of input files to be read in per block of training")
+parser.add_argument('-c', '--num_channels', type=int, default=10, help="set number of channels for each satellite input image")
 args = parser.parse_args()
 
 if args.neural_net!='basic_autoencoder' and args.neural_net!='unet' and args.neural_net!='tiramisu':
@@ -95,7 +95,7 @@ my_callbacks = [earlystop, history]
 ##
 
 input_file_list = []
-cmd_str = '/group/director2107/mcheeseman/bom_data/2019/01/**/**/*.nc'
+cmd_str = '/group/director2107/mcheeseman/bom_data/*.nc'
 for fn in glob.iglob(cmd_str, recursive=True):
     input_file_list.append( fn )
 
@@ -105,7 +105,7 @@ shuffle( input_file_list )
 if args.verbose != 0:
    print('# of input files located: ', len(input_file_list))
 
-num_training_images = 1000
+num_training_images = 400
 training_input_file_list = input_file_list[ :num_training_images ]
 test_input_file_list = input_file_list[ num_training_images:num_training_images+6 ]
 
@@ -115,18 +115,40 @@ test_input_file_list = input_file_list[ num_training_images:num_training_images+
 
 def read_input_file( filename ):
     fid = nc.Dataset( filename, 'r' )
-    x = np.zeros((image_dims[0],image_dims[1],image_dims[2]))
-    idx = 7
-    for n in range(image_dims[2]):
-        if idx<10:
-           varname = 'channel_000' + str(idx) + '_brightness_temperature'
-        else:
-           varname = 'channel_00' + str(idx) + '_brightness_temperature'
-        x[ :,:,n ] = np.array( fid[varname] )
-        idx = idx + 1
+#    x = np.zeros((image_dims[0],image_dims[1],image_dims[2]))
+#    idx = 7
+#    for n in range(image_dims[2]):
+#        if idx<10:
+#           varname = 'channel_000' + str(idx) + '_brightness_temperature'
+#        else:
+#           varname = 'channel_00' + str(idx) + '_brightness_temperature'
+#        x[ :,:,n ] = np.array( fid[varname] )
+#        idx = idx + 1
+    x = np.array( fid['brightness'] )
     y = np.array( fid['precipitation'] )
+  
+    x = x[ np.newaxis,:,:,: ]
+    #y = y[ np.newaxis,:,:,np.newaxis ]
+
     fid.close()
     return x, y
+
+##
+## TEST TEST TEST 
+##
+
+#satellite_input = np.zeros((5,image_dims[0],image_dims[1],image_dims[2]))
+#real_rainfall = np.zeros((5,image_dims[0],image_dims[1],1))
+
+#for n in range( 5 ):
+#    satellite_input[ n,:,:,: ], real_rainfall[ n,:,:,0 ] = read_input_file( test_input_file_list[n] )
+
+#plot_images( real_rainfall, 
+#             np.squeeze( satellite_input[ :,:,:,0 ] ), 
+#             'test', 
+#             args.num_filter )
+
+#sys.exit()
 
 def perform_training_block( model, input_files, batch_size ):
 
