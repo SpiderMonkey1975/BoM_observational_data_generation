@@ -33,19 +33,50 @@ for i in range( radar_data.shape[0] ):
            index_1.append( i )
            index_2.append( j )
 
-#print( len(index_1) )
-#print( len(index_2) )
+num_points = len(index_1)
+#print( num_points )
+
+##
+## Construct a global masking array
+##
+
+mask = np.ones((radar_data.shape[0],radar_data.shape[1],), dtype=np.int)
+for n in range( num_points ):
+    mask[ index_1[n],index_2[n] ] = 0
+
+##
+## Choose another set of indicies for prediction use 
+##
+
+prediction_index_1 = []
+prediction_index_2 = []
+for i in range( mask.shape[0] ):
+    for j in range( mask.shape[1] ):
+        if mask[i,j] == 1:
+           prediction_index_1.append( i )
+           prediction_index_2.append( j )
+
+prediction_index_1 = prediction_index_1[ :num_points ]
+prediction_index_2 = prediction_index_2[ :num_points ]
 
 fid = nc.Dataset('mask.nc', "w")
 fid.createDimension("n", len(index_1))
 index_1_var = fid.createVariable( 'index_1', 'f', ('n') )
 index_2_var = fid.createVariable( 'index_2', 'f', ('n') )
+pindex_1_var = fid.createVariable( 'prediction_index_1', 'f', ('n') )
+pindex_2_var = fid.createVariable( 'prediction_index_2', 'f', ('n') )
 
-index_1_var = fid['index_1']
-index_1_var[:] = index_1
-index_2_var = fid['index_2']
-index_2_var[:] = index_2
+var = fid['index_1']
+var[:] = index_1
+var = fid['index_2']
+var[:] = index_2
+var = fid['prediction_index_1']
+var[:] = prediction_index_2
+var = fid['prediction_index_2']
+var[:] = prediction_index_2
 fid.close()
+
+sys.exit()
 
 ##
 ## Get the first pair of satellite and radar input datafiles

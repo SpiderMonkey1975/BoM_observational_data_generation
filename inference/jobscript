@@ -3,12 +3,11 @@
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
 #SBATCH --constraint=p100
-#SBATCH --time=03:00:00
+#SBATCH --time=00:15:00
 #SBATCH --account=director2107
 #SBATCH --export=MYSCRATCH,MYGROUP
 
 CONTAINER=/group/director2107/mcheeseman/tensorflow_1.14.0-gpu-py3.sif
-BATCH_SIZE=128
 
 ##====================================================================================================
 ##---------------------------    Do not change anything below this line    ---------------------------
@@ -36,4 +35,4 @@ export TF_XLA_FLAGS=--tf_xla_cpu_global_jit
 
 IFS=',' read -ra gpus <<< "$CUDA_VISIBLE_DEVICES"
 
-srun -n 1 --export=ALL -u singularity exec --nv --bind /group $CONTAINER python3 ./coalesced_train.py -g ${#gpus[@]} -b $BATCH_SIZE
+srun -n 1 --export=ALL -u singularity exec --nv --bind /group $CONTAINER python3 ./inference.py

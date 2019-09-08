@@ -1,6 +1,5 @@
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, History
-from alt_model_checkpoint import AltModelCheckpoint
 from datetime import datetime
 from random import shuffle
 
@@ -22,7 +21,6 @@ from plotting_routines import plot_model_errors, plot_images
 ##
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-g', '--num_gpu', type=int, default=4, help="set number of GPUs to be used for training")
 parser.add_argument('-f', '--num_filter', type=int, default=16, help="set initial number of filters used in CNN layers for the neural networks")
 parser.add_argument('-v', '--verbose', type=int, default=0, help="set to 1 if additional debugging info desired")
 parser.add_argument('-b', '--batch_size', type=int, default=10, help="set the batch size used in training")
@@ -57,10 +55,10 @@ image_dims[1] = 2450
 image_dims[2] = args.num_channels 
 
 if args.neural_net == 'basic_autoencoder':
-    model, ref_model = autoencoder( image_dims, args.num_filter, args.num_gpu )
+    model, ref_model = autoencoder( image_dims, args.num_filter, 1 )
 
 if args.neural_net == 'unet':
-    model, ref_model = unet( image_dims, args.num_filter, args.num_gpu )
+    model, ref_model = unet( image_dims, args.num_filter, 1 )
 
 model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.0001), metrics=['mae'])
 
@@ -73,13 +71,10 @@ if args.verbose != 0:
 ##
 
 filename = "model_weights_" + args.neural_net + "_" + str(args.num_filter) + "filters.h5"
-if args.num_gpu == 1:
-   checkpoint = ModelCheckpoint( filename, 
+checkpoint = ModelCheckpoint( filename, 
                                  monitor='val_mean_absolute_error', 
                                  save_best_only=True, 
                                  mode='min' )
-else:
-   checkpoint = AltModelCheckpoint( filename, ref_model )
 
 earlystop = EarlyStopping( min_delta=0.001,
                            monitor='val_mean_absolute_error', 
@@ -88,7 +83,7 @@ earlystop = EarlyStopping( min_delta=0.001,
 
 history = History()
 
-my_callbacks = [earlystop, history]
+my_callbacks = [checkpoint, earlystop, history]
 
 ##
 ## Get a list of input data files
@@ -115,40 +110,17 @@ test_input_file_list = input_file_list[ num_training_images:num_training_images+
 
 def read_input_file( filename ):
     fid = nc.Dataset( filename, 'r' )
-#    x = np.zeros((image_dims[0],image_dims[1],image_dims[2]))
-#    idx = 7
-#    for n in range(image_dims[2]):
-#        if idx<10:
-#           varname = 'channel_000' + str(idx) + '_brightness_temperature'
-#        else:
-#           varname = 'channel_00' + str(idx) + '_brightness_temperature'
-#        x[ :,:,n ] = np.array( fid[varname] )
-#        idx = idx + 1
-    x = np.array( fid['brightness'] )
-    y = np.array( fid['precipitation'] )
-  
+    var = fid['brightness'] 
+    x = var[ :,:,: ]
+
+    var = fid['precipitation']
+    y = var[ :,: ]
+
     x = x[ np.newaxis,:,:,: ]
-    #y = y[ np.newaxis,:,:,np.newaxis ]
+    y = y[ np.newaxis,:,: ]
 
     fid.close()
     return x, y
-
-##
-## TEST TEST TEST 
-##
-
-#satellite_input = np.zeros((5,image_dims[0],image_dims[1],image_dims[2]))
-#real_rainfall = np.zeros((5,image_dims[0],image_dims[1],1))
-
-#for n in range( 5 ):
-#    satellite_input[ n,:,:,: ], real_rainfall[ n,:,:,0 ] = read_input_file( test_input_file_list[n] )
-
-#plot_images( real_rainfall, 
-#             np.squeeze( satellite_input[ :,:,:,0 ] ), 
-#             'test', 
-#             args.num_filter )
-
-#sys.exit()
 
 def perform_training_block( model, input_files, batch_size ):
 

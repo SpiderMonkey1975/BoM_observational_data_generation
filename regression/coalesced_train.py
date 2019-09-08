@@ -13,7 +13,7 @@ sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_genera
 from fully_connected import simple_net
 
 sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/plotting_routines')
-from plotting_routines import plot_fc_model_errors, plot_images 
+from plotting_routines import plot_fc_model_errors
 
 
 ##
@@ -45,23 +45,22 @@ model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.0001), metrics=['ma
 ## Set up the training of the model
 ##
 
-filename = "model_weights_fully_connected.h5"
-if args.num_gpu == 1:
-   checkpoint = ModelCheckpoint( filename, 
-                                 monitor='val_mean_absolute_error', 
-                                 save_best_only=True, 
-                                 mode='min' )
-else:
-   checkpoint = AltModelCheckpoint( filename, ref_model )
+history = History()
 
 earlystop = EarlyStopping( min_delta=0.0001,
                            monitor='val_mean_absolute_error', 
                            patience=5,
                            mode='min' )
 
-history = History()
-
-my_callbacks = [checkpoint, earlystop, history]
+filename = "model_weights_fully_connected.h5"
+if args.num_gpu == 1:
+   checkpoint = ModelCheckpoint( filename, 
+                                 monitor='val_mean_absolute_error', 
+                                 save_best_only=True, 
+                                 mode='min' )
+   my_callbacks = [checkpoint, earlystop, history]
+else:
+   my_callbacks = [earlystop, history]
 
 ##
 ## Get a list of input data files
@@ -95,8 +94,8 @@ def read_input_file( filename ):
     return x, y
 
 
-x = np.empty((len(num_training_images),input_dims[0],10))
-y = np.empty((len(num_training_images),input_dims[0]))
+x = np.empty((num_training_images,input_dims[0],10))
+y = np.empty((num_training_images,input_dims[0]))
 
 t1 = datetime.now()
 for n in range(num_training_images):
@@ -115,26 +114,5 @@ training_time = (datetime.now()-t1 ).total_seconds()
 print("   training took %7.1f seconds" % training_time)
 print("   I/O took %7.1f seconds" % io_time)
 
-plot_model_errors( 'simple_fully_connected', -1, training_errors, validation_errors )
-
-##
-## Perform inference on test set for accuracy check
-##
-
-x = np.empty((5,input_dims[0],10))
-y = np.empty((5,input_dims[0]))
-
-t1 = datetime.now()
-for n in range(5):
-    x[ n,:,: ], y[ n,: ] = read_input_file( test_input_file_list[n] )
-io_time = (datetime.now()-t1 ).total_seconds()
-
-t1 = datetime.now()
-output = model.predict( x, batch_size=args.batch_size, verbose=0 )
-inference_time = (datetime.now()-t1 ).total_seconds()
-
-print("   inference took %5.4f seconds" % inference_time)
-print("   I/O took %5.4f seconds" % io_time)
-
-plot_images( y, output, 'fully_connected', -1 )
+plot_fc_model_errors( 'simple_fully_connected', hist )
 
