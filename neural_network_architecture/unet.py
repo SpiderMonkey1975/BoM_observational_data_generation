@@ -1,25 +1,11 @@
-import tensorflow as tf
-
-from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import Dropout, Input, BatchNormalization, Conv2D, MaxPooling2D, concatenate, UpSampling2D
-from tensorflow.keras.utils import multi_gpu_model
-
-
-def construct_model( input_layer, output_layer, num_gpu ):
-    if num_gpu>1:
-       with tf.device("/cpu:0"):
-            model = Model( inputs=input_layer, outputs=output_layer )
-            parallel_model = multi_gpu_model( model, gpus=num_gpu )
-    else:
-       model = Model( inputs=input_layer, outputs=output_layer )
-       parallel_model = model
-    return parallel_model, model
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, BatchNormalization, Conv2D, concatenate, UpSampling2D
 
 ##
 ##-------------  U-Net stuff ----------------------------------------------
 ##
 
-def unet( image_dims, num_filters, num_gpus ):
+def unet( image_dims, num_filters ):
     ''' Python function that defines a modified U-Net autoencoder neural net architecture
 
         INPUT: image_dims  -> 3D array containing the input image dimensions as so:
@@ -27,10 +13,8 @@ def unet( image_dims, num_filters, num_gpus ):
                               dim[1] => image height
                               dim[2] => number of channels in image 
                num_filters -> # of filters in the first convolutional layer
-               num_gpus    -> # of GPUs used in training the network
     '''
 
-    #input_layer = Input(shape = (2050, 2450, 10))
     input_layer = Input(shape = (images_dims[0], image_dims[1], image_dims[2]))
 
     net = Conv2D( 1, 3, strides=1, activation='relu', padding='same')(input_layer)
@@ -71,5 +55,5 @@ def unet( image_dims, num_filters, num_gpus ):
 
     net = Conv2D(1, 3, strides=1, activation='relu', padding='same')(net)
 
-    return construct_model( input_layer, net, num_gpus ) 
+    return Model( inputs=input_layer, outputs=net )
 

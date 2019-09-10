@@ -89,8 +89,7 @@ def plot_images( real_images, fake_images, net_type, num_filters ):
     plt.figure(figsize=(12,4))
     for i in range(real_images.shape[0]):
             plt.subplot(2, 5, i+1)
-            image = real_images[ i,:,: ]
-            image = np.reshape(image, [img_rows,img_cols])
+            image = np.squeeze( real_images[ i,:,: ] )
             plt.imshow(image, cmap=newcmp)
             plt.axis('off')
             if i == 0:
@@ -100,8 +99,7 @@ def plot_images( real_images, fake_images, net_type, num_filters ):
 
     for i in range(fake_images.shape[0]):
             plt.subplot(2, 5, i+6)
-            image = fake_images[ i,:,: ]
-            image = np.reshape(image, [img_rows, img_cols])
+            image = np.squeeze( fake_images[ i,:,: ] )
             plt.imshow(image, cmap=newcmp)
             plt.axis('off')
             if i == 0:
@@ -109,10 +107,8 @@ def plot_images( real_images, fake_images, net_type, num_filters ):
                    plt.text( 0, 0, 'Basic Autoencoder Output', fontsize=14 )
                 elif net_type == 'unet':
                    plt.text( 0, 0, 'U-Net Output', fontsize=14 )
-                elif net_type == 'fully_connected':
-                   plt.text( 0, 0, 'Fully Connected', fontsize=14 )
                 else:
-                   plt.text( 0, 0, 'FC-DenseNet Output', fontsize=14 )
+                   plt.text( 0, 0, 'Fully Connected', fontsize=14 )
             if i == 4:
                plt.colorbar()
     plt.tight_layout()
@@ -177,8 +173,6 @@ def plot_model_errors( arch, num_filters, training_error, validation_error ):
 
     plot_filename = 'errors_' + arch + "_" + str(num_filters) + "filters.png"
 
-    #plt.plot( hist.history['mean_absolute_error'], color='r' )
-    #plt.plot( hist.history['val_mean_absolute_error'], color='b' )
     plt.plot( training_error, color='r' )
     plt.plot( validation_error, color='b' )
     plt.xlabel('Epoch')
