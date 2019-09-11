@@ -80,7 +80,7 @@ def plot_images( real_images, fake_images, net_type, num_filters ):
     newcmp = create_colormap()
     
     if net_type == 'fully_connected':
-        filename = 'rainfall_regression_' + net_type + 'filters.png'
+        filename = 'rainfall_regression_' + net_type + '.png'
     else:
         filename = 'rainfall_regression_' + net_type + '_' + str(num_filters) + 'filters.png'
 

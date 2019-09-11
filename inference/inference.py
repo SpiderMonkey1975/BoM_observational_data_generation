@@ -112,8 +112,21 @@ for n in range(724000):
     predicted_precip[ :,i,j ] = output[ :,n ]
 
 ##
-## Perform a visual comparision between the observed and predicted precipitation fields
+## Output the precipitation fields (file and plot)
 ##
+
+fid = nc.Dataset('precipitation.nc', "w")
+fid.createDimension("t", num_test_points)
+fid.createDimension("x", nx)
+fid.createDimension("y", ny)
+observed_var = fid.createVariable( 'observed_precipitation', 'f', ('t','x','y') )
+predicted_var = fid.createVariable( 'predicted_precipitation', 'f', ('t','x','y') )
+
+var = fid['observed_precipitation']
+var[:,:] = true_precip
+var = fid['predicted_precipitation']
+var[:] = predicted_precip
+fid.close()
 
 plot_images( true_precip, predicted_precip, 'fully_connected', -1 )
 

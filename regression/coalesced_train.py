@@ -8,10 +8,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob, sys, argparse
 
-sys.path.insert(0, '/home/ubuntu/BoM_observational_data_generation/neural_network_architecture/')
+sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/neural_network_architecture/')
 from fully_connected import simple_net
 
-sys.path.insert(0, '/home/ubuntu/BoM_observational_data_generation/plotting_routines')
+sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/plotting_routines')
 from plotting_routines import plot_fc_model_errors
 
 ##
@@ -58,7 +58,7 @@ my_callbacks = [checkpoint, earlystop, history]
 ##
 
 input_file_list = []
-cmd_str = '/data/input_*.nc'
+cmd_str = '/group/director2107/mcheeseman/bom_data//input_*.nc'
 for fn in glob.iglob(cmd_str, recursive=True):
     input_file_list.append( fn )
 
