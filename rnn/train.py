@@ -1,11 +1,15 @@
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv3D, ConvLSTM2D, BatchNormalization
 from tensorflow.keras.callbacks import EarlyStopping, History
 from datetime import datetime
 
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse, sys
+
+sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/neural_network_architecture/')
+from recurrent_networks import convolutional_ltsm
+
+sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/plotting_routines')
+from plotting_routines import plot_model_errors, plot_images
 
 ##
 ## Parse any commandline arguments given by the user
@@ -17,33 +21,17 @@ parser.add_argument('-b', '--batch_size', type=int, default=5, help="set batch s
 args = parser.parse_args()
 
 ##
-## Read in the high-resolution radar precipitation data
+## Construct the convolutional-LTSM neural network
 ##
 
-radar_data = np.load( '../input/jan28-29_2019_precipitation.npy' ) 
+image_dims = np.zeros((2,), dtype=np.int32)
+image_dims[0] = 2050
+image_dims[1] = 2450
 
-##
-## Consruct the convolutional-LTSM neural network
-##
-
-lat = np.int( radar_data.shape[1] / 8)
-lon = np.int( radar_data.shape[2] / 8)
 num_filters = 8
-kernel_dim = 2
+model = convolutional_ltsm( num_filters, image_dims )
 
-seq = Sequential()
-seq.add(ConvLSTM2D(filters=num_filters, kernel_size=kernel_dim, input_shape=(None, lat, lon, 1), padding='same', return_sequences=True))
-seq.add(BatchNormalization())
 
-for n in range(3):
-    num_filters = num_filters * 2
-    seq.add(ConvLSTM2D(filters=num_filters, kernel_size=kernel_dim, padding='same', return_sequences=True))
-    seq.add(BatchNormalization())
-
-seq.add(Conv3D(filters=1, kernel_size=kernel_dim, activation='sigmoid', padding='same', data_format='channels_last'))
-
-seq.compile(loss='binary_crossentropy', optimizer='adadelta')
-#seq.compile(loss='binary_crossentropy', optimizer='adagrad')
 
 ##
 ## Convert radar data into a 5D input tensor [ SAMPLES, SLICES, LAT, LON, CHANNELS ]
@@ -55,16 +43,16 @@ seq.compile(loss='binary_crossentropy', optimizer='adadelta')
 ##    CHANNELS-> # of channels in input data (should be 1)
 ##
 
-slices = 6
-samples = np.int( radar_data.shape[0] / slices )
+#slices = 6
+#samples = np.int( radar_data.shape[0] / slices )
 
-input_data = np.empty((samples, slices, lat, lon, 1), dtype=np.float)
+#input_data = np.empty((samples, slices, lat, lon, 1), dtype=np.float)
     
-cnt = 0
-for i in range(samples):
-    for t in range(slices):
-        input_data[ i,t,:,:,0 ] = np.squeeze( radar_data[ cnt,:lat,:lon,0 ] )
-        cnt = cnt + 1
+#cnt = 0
+#for i in range(samples):
+#    for t in range(slices):
+#        input_data[ i,t,:,:,0 ] = np.squeeze( radar_data[ cnt,:lat,:lon,0 ] )
+#        cnt = cnt + 1
 
 where_are_nans = np.isnan( input_data )
 input_data[ where_are_nans ] = 0.0

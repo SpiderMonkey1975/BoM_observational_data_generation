@@ -53,6 +53,15 @@ def read_training_input_file( filename ):
     fid.close()
     return x, y
 
+def read_test_input_file_full( filename ):
+    fid = nc.Dataset( filename, 'r' )
+    x = np.array( fid['brightness'] )
+    x = x[ np.newaxis,:,:,: ]
+
+    fid.close()
+    return x
+
+
 def read_mask():
     fid = nc.Dataset( 'mask.nc', 'r' )
     var = fid['index_1']
@@ -169,10 +178,100 @@ print("   I/O took %5.4f seconds (%4.1f percent of total runtime)" % (io_time, 1
 predicted_precip = np.empty((num_test_points,nx,ny), np.float32)
 predicted_precip[:,:,:] = -1
 
-for n in range(724000):
+for n in range(num_datapoints):
     i = int(index_1[n])
     j = int(index_2[n])
     predicted_precip[ :,i,j ] = output[ :,n ]
+
+##
+## Output the precipitation fields (file and plot)
+##
+
+fid = nc.Dataset('precipitation_radar_only.nc', "w")
+fid.createDimension("t", num_test_points)
+fid.createDimension("x", nx)
+fid.createDimension("y", ny)
+observed_var = fid.createVariable( 'observed_precipitation', 'f', ('t','x','y') )
+predicted_var = fid.createVariable( 'predicted_precipitation', 'f', ('t','x','y') )
+
+var = fid['observed_precipitation']
+var[:,:] = true_precip
+var = fid['predicted_precipitation']
+var[:] = predicted_precip
+fid.close()
+
+plot_images( true_precip, predicted_precip, 'fully_connected_radar_only', -1 )
+
+##
+## Create some comparision statistics
+##
+
+for time_slice in range(num_test_points):
+    print('Test Point %1d' % time_slice)
+
+    num_hits = 0
+    num_cases = 0
+    for n in range( num_datapoints ):
+        i = int(index_1[n])
+        j = int(index_2[n])
+        if true_precip[time_slice,i,j] > 0.0:
+           num_cases = num_cases + 1
+           tol = abs( output[ time_slice,n ] - true_precip[time_slice,i,j] )
+           if tol < 0.05:
+              num_hits = num_hits + 1
+
+    print( "  prediction accuracy for non-zero observations was %4.1f percent" % (100.0*float(num_hits)/float(num_cases)))
+
+    print(' maximum predicted prediction value was %4.3f' % np.amax(output[time_slice,:]))
+    print(' maximum observed prediction value was %4.3f' % np.amax(true_precip[time_slice,:,:]))
+
+##
+## Generate input indicies
+##
+
+global_index = np.empty((nx*ny,2,), dtype=np.int32)
+
+n = 0
+for i in range(nx):
+    for j in range(ny):
+        global_index[n,0] = i
+        global_index[n,1] = j
+        n = n + 1
+
+##
+## Perform inference
+##
+
+x = np.empty((num_test_points,num_datapoints,num_channels), dtype=np.float32)
+satellite_data = np.empty((num_test_points,nx,ny,num_channels))
+
+t1 = datetime.now()
+for n in range(num_test_points):
+    satellite_data[ n,:,:,: ] = read_test_input_file_full( test_input_file_list[n] )
+io_time = (datetime.now()-t1 ).total_seconds()
+
+
+t1 = datetime.now()
+
+for nn in range(6):
+    idx = nn*num_datapoints
+
+    for n in range(num_datapoints):
+        i = global_index[n+idx,0]
+        j = global_index[n+idx,1]
+        x[ :,n,: ] = satellite_data[ :,i,j,: ]
+
+    output = model.predict( x, verbose=0 )
+
+    for n in range(num_datapoints):
+        i = global_index[n+idx,0]
+        j = global_index[n+idx,1]
+        predicted_precip[ :,i,j ] = output[ :,n ]
+
+inference_time = (datetime.now()-t1 ).total_seconds()
+
+print("   inference took %5.4f seconds" % inference_time)
+print("   I/O took %5.4f seconds (%4.1f percent of total runtime)" % (io_time, 100.0*(io_time/(io_time+inference_time))))
 
 ##
 ## Output the precipitation fields (file and plot)
@@ -202,7 +301,7 @@ for time_slice in range(num_test_points):
 
     num_hits = 0
     num_cases = 0
-    for n in range( 724000 ):
+    for n in range( num_datapoints ):
         i = int(index_1[n])
         j = int(index_2[n])
         if true_precip[time_slice,i,j] > 0.0:
@@ -215,4 +314,3 @@ for time_slice in range(num_test_points):
 
     print(' maximum predicted prediction value was %4.3f' % np.amax(output[time_slice,:]))
     print(' maximum observed prediction value was %4.3f' % np.amax(true_precip[time_slice,:,:]))
-
