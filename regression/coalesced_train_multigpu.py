@@ -22,7 +22,7 @@ num_channels = 10
 num_datapoints = 724016
 nx = 2050
 ny = 2450
-num_test_points = 5
+num_test_points = 100 
 
 ##
 ## Define some required I/O functions
@@ -79,6 +79,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--batch_size', type=int, default=50, help="set the batch size used in training")
 parser.add_argument('-g', '--num_gpu', type=int, default=2, help="set the number of GPUS to be used in training")
 parser.add_argument('-t', '--tolerance', type=float, default=0.001, help="set the tolerance used for the early stopping callback")
+parser.add_argument('-n', '--num_nodes', type=int, default=16, help="set the number of nodes in the first dense layer in the network.")
+parser.add_argument('-l', '--num_layers', type=int, default=3, help="set the number of dense layers in the neural network.")
 args = parser.parse_args()
 
 ##
@@ -89,7 +91,7 @@ input_dims = np.empty((2,),dtype=np.int)
 input_dims[0] = num_datapoints 
 input_dims[1] = num_channels
 
-model = simple_net_multigpu( input_dims, args.num_gpu )
+model = simple_net_multigpu( input_dims, args.num_gpu, args.num_layers, args.num_nodes )
 model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.0001), metrics=['mae'])
 print('Neural network and model created')
 
@@ -206,8 +208,11 @@ plot_images( true_precip, predicted_precip, 'fully_connected_radar_only', -1 )
 ## Create some comparision statistics
 ##
 
+min_accuracy = 100.0
+max_accuracy = 0.0;
+avg_accuracy = 0.0
+
 for time_slice in range(num_test_points):
-    print('Test Point %1d' % time_slice)
 
     num_hits = 0
     num_cases = 0
@@ -220,10 +225,21 @@ for time_slice in range(num_test_points):
            if tol < 0.05:
               num_hits = num_hits + 1
 
-    print( "  prediction accuracy for non-zero observations was %4.1f percent" % (100.0*float(num_hits)/float(num_cases)))
+    tol = 100.0*float(num_hits)/float(num_cases)
+    if tol < min_accuracy:
+       min_accuracy = tol
+    if tol > max_accuracy:
+       max_accuracy = tol
 
-    print(' maximum predicted prediction value was %4.3f' % np.amax(output[time_slice,:]))
-    print(' maximum observed prediction value was %4.3f' % np.amax(true_precip[time_slice,:,:]))
+    avg_accuracy = avg_accuracy + tol
+
+
+avg_accuracy = avg_accuracy / float(num_test_points)
+print(' ')
+print("Prediction accuracy for non-zero observations (Radar domains only)")
+print(' minimum value was %4.1f' % min_accuracy)
+print(' maximum value was %4.1f' % max_accuracy)
+print(' average value was %4.1f' % avg_accuracy)
 
 ##
 ## Generate input indicies
@@ -296,8 +312,11 @@ plot_images( true_precip, predicted_precip, 'fully_connected', -1 )
 ## Create some comparision statistics
 ##
 
+min_accuracy = 100.0
+max_accuracy = 0.0;
+avg_accuracy = 0.0
+
 for time_slice in range(num_test_points):
-    print('Test Point %1d' % time_slice)
 
     num_hits = 0
     num_cases = 0
@@ -310,7 +329,18 @@ for time_slice in range(num_test_points):
            if tol < 0.05:
               num_hits = num_hits + 1
 
-    print( "  prediction accuracy for non-zero observations was %4.1f percent" % (100.0*float(num_hits)/float(num_cases)))
+    tol = 100.0*float(num_hits)/float(num_cases)
+    if tol < min_accuracy:
+       min_accuracy = tol
+    if tol > max_accuracy:
+       max_accuracy = tol
 
-    print(' maximum predicted prediction value was %4.3f' % np.amax(output[time_slice,:]))
-    print(' maximum observed prediction value was %4.3f' % np.amax(true_precip[time_slice,:,:]))
+    avg_accuracy = avg_accuracy + tol
+
+
+avg_accuracy = avg_accuracy / float(num_test_points)
+print(' ')
+print("Prediction accuracy for non-zero observations (full Australian continent)")
+print(' minimum value was %4.1f' % min_accuracy)
+print(' maximum value was %4.1f' % max_accuracy)
+print(' average value was %4.1f' % avg_accuracy)
