@@ -84,10 +84,14 @@ def plot_images( real_images, fake_images, net_type, num_filters ):
     else:
         filename = 'rainfall_regression_' + net_type + '_' + str(num_filters) + 'filters.png'
 
+    num_display_images = 5
+    if real_images.shape[0] < 5:
+       num_display_images = real_images.shape[0]
+
     img_cols = real_images.shape[1] 
     img_rows = real_images.shape[2]
     plt.figure(figsize=(12,4))
-    for i in range(real_images.shape[0]):
+    for i in range(num_display_images):
             plt.subplot(2, 5, i+1)
             image = np.squeeze( real_images[ i,:,: ] )
             plt.imshow(image, cmap=newcmp)
@@ -97,7 +101,11 @@ def plot_images( real_images, fake_images, net_type, num_filters ):
             if i == 4:
                plt.colorbar()
 
-    for i in range(fake_images.shape[0]):
+    num_display_images = 5
+    if fake_images.shape[0] < 5:
+       num_display_images = fake_images.shape[0]
+
+    for i in range(num_display_images):
             plt.subplot(2, 5, i+6)
             image = np.squeeze( fake_images[ i,:,: ] )
             plt.imshow(image, cmap=newcmp)
