@@ -8,11 +8,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob, sys, argparse
 
-sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/neural_network_architecture/')
+sys.path.insert(0, '/home/ubuntu/BoM_observational_data_generation/neural_network_architecture/')
 from fully_connected import simple_net
 
-sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/plotting_routines')
+sys.path.insert(0, '/home/ubuntu/BoM_observational_data_generation/plotting_routines')
 from plotting_routines import plot_fc_model_errors
+
+num_test_points = 100
 
 ##
 ## Look for any user specified commandline arguments
@@ -20,7 +22,10 @@ from plotting_routines import plot_fc_model_errors
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--batch_size', type=int, default=50, help="set the batch size used in training")
-parser.add_argument('-t', '--tolerance', type=float, default=0.025, help="set the tolerance used for the early stopping callback")
+parser.add_argument('-t', '--tolerance', type=float, default=0.001, help="set the tolerance used for the early stopping callback")
+parser.add_argument('-r', '--learn_rate', type=float, default=0.001, help="set the learn rate for the optimizer")
+parser.add_argument('-n', '--num_nodes', type=int, default=8, help="set the number of nodes in the first dense layer in the network.")
+parser.add_argument('-l', '--num_layers', type=int, default=3, help="set the number of dense layers in the neural network.")
 args = parser.parse_args()
 
 ##
@@ -31,8 +36,9 @@ input_dims = np.empty((2,),dtype=np.int)
 input_dims[0] = 724016 
 input_dims[1] = 10
 
-model = simple_net( input_dims )
-model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.0001), metrics=['mae'])
+model = simple_net( input_dims, args.num_layers, args.num_nodes )
+model.compile(loss='mean_squared_error', optimizer=Adam(lr=args.learn_rate), metrics=['mae'])
+model.summary()
 print('Neural network and model created')
 
 ##
@@ -58,14 +64,14 @@ my_callbacks = [checkpoint, earlystop, history]
 ##
 
 input_file_list = []
-cmd_str = '/group/director2107/mcheeseman/bom_data//input_*.nc'
+cmd_str = '/data/input_*.nc'
 for fn in glob.iglob(cmd_str, recursive=True):
     input_file_list.append( fn )
 
 input_file_list = list(dict.fromkeys(input_file_list))
 shuffle( input_file_list )
 
-num_training_images = len(input_file_list) - 5 
+num_training_images = len(input_file_list) - num_test_points 
 training_input_file_list = input_file_list[ :num_training_images ]
 test_input_file_list = input_file_list[ num_training_images: ]
 print('%5d input datafiles located' % len(input_file_list))
@@ -99,7 +105,7 @@ hist = model.fit( x, y,
                   batch_size=args.batch_size,
                   epochs=500, 
                   verbose=2, 
-                  validation_split=.125,
+                  validation_split=.2,
                   callbacks=my_callbacks, 
                   shuffle=False )
 training_time = (datetime.now()-t1 ).total_seconds()
