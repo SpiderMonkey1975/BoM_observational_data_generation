@@ -12,14 +12,20 @@ root_dir = '/home/ubuntu'
 data_dir = '/data'
 
 dirpath = root_dir + '/BoM_observational_data_generation/neural_network_architecture/'
-#sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/neural_network_architecture/')
 sys.path.insert(0, dirpath)
-from basic_autoencoder import autoencoder, autoencoder_multigpu
+from basic_autoencoder import create_autoencoder
+from unet import create_unet
+
+##
+## Set some useful run constants
+##
 
 image_dims = np.empty((3,),dtype=np.int)
 image_dims[0] = 2050
 image_dims[1] = 2450
 image_dims[2] = 10 
+
+num_test_images = 100
 
 ##
 ## Look for any user specified commandline arguments
@@ -39,35 +45,27 @@ args = parser.parse_args()
 ## Form the neural network
 ##
 
-if args.num_gpus>1:
-   model = autoencoder_multigpu( image_dims, args.num_filter, args.num_gpus ) 
-else:
-   model = autoencoder( image_dims, args.num_filter ) 
-   model.summary()
-
+model = create_autoencoder( image_dims, args.num_filter, args.num_gpus ) 
 model.compile(loss='mean_squared_error', optimizer=Adam(lr=args.learn_rate), metrics=['mae'])
 
 ##
 ## Set up the training of the model
 ##
 
-filename = "model_weights_" + str(args.num_filter) + "filters.h5"
-checkpoint = ModelCheckpoint( filename, 
-                              monitor='val_mean_absolute_error', 
-                              save_best_only=True, 
-                              mode='min' )
-
 earlystop = EarlyStopping( min_delta=args.stopping_tolerance,
                            monitor='val_mean_absolute_error', 
                            patience=5,
                            mode='min' )
-
 history = History()
 
-if args.num_gpus>1:
-   my_callbacks = [earlystop, history]
-else: 
-   my_callbacks = [checkpoint, earlystop, history]
+my_callbacks = [earlystop, history]
+if args.num_gpus == 1:
+   filename = "model_weights_" + str(args.num_filter) + "filters.h5"
+   checkpoint = ModelCheckpoint( filename, 
+                                 monitor='val_mean_absolute_error', 
+                                 save_best_only=True, 
+                                 mode='min' )
+   my_callbacks.append( checkpoint )
 
 ##
 ## Get a list of input data files
@@ -81,14 +79,16 @@ for fn in glob.iglob(cmd_str, recursive=True):
 input_file_list = list(dict.fromkeys(input_file_list))
 shuffle( input_file_list )
 
+num_training_images = len(input_file_list) - num_test_images
+
 print(' ')
 print('*******************************************')
 print('  DATAFILE STATS')
 print('*******************************************')
 print(' ')
-print('    %3d input files located ' % len(input_file_list))
-print('    800 input files used for training')
-print('    100 input files used for testing')
+print('    %3d input files located ' % len(input_file_list) )
+print('    %3d input files used for training' % num_training_images )
+print('    %3d input files used for testing' % num_test_images )
 print(' ')
 
 
@@ -103,7 +103,7 @@ labels = np.empty((args.num_files,image_dims[0],image_dims[1]), dtype=np.float32
 total_io_time = 0.0
 total_training_time = 0.0
 
-num_rounds = int( np.floor(800.0 / float(args.num_files)) )
+num_rounds = int( np.floor( float(num_training_images) / float(args.num_files)) )
 num_rounds = 1
 
 idx = 0
@@ -139,7 +139,7 @@ print('  TRAINING STATS')
 print('*******************************************')
 print(' ')
 print("    training took %7.1f seconds" % total_training_time)
-print("    I/O took %7.1f seconds (%4.1f percent of total runtime)" % (total_io_time,100.0*(total_io_time/(total_io_time+total_training_time))))
+print("    I/O took %7.1f seconds" % total_io_time)
 print(' ')
 
 
@@ -148,12 +148,10 @@ print(' ')
 ##  INFERENCE 
 ##-------------------------------------------------------------------------------------------------
 
-idx = 800
-
 # read in input data for current block of input files
 t1 = datetime.now()
 for n in range( args.num_files ):
-    fid = nc.Dataset( input_file_list[idx+n] )
+    fid = nc.Dataset( input_file_list[num_training_images+n] )
     x = np.array( fid['brightness'] )
     y = np.array( fid['precipitation'] )
     fid.close()
@@ -173,7 +171,7 @@ print('  INFERENCE STATS')
 print('*******************************************')
 print(' ')
 print("    inference took %5.3f seconds" % inference_time)
-print("    I/O took %5.3f seconds (%4.1f percent of total runtime)" % (io_time,100.0*(io_time/(io_time+inference_time))))
+print("    I/O took %5.3f seconds" % io_time)
 
 
 

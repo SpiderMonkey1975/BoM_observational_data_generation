@@ -40,7 +40,7 @@ def autoencoder( image_dims, num_filters ):
     return Model( inputs=input_layer, outputs=net )
 
 
-def autoencoder_multigpu( input_dims, num_filters, num_gpus ):
+def create_autoencoder( input_dims, num_filters, num_gpus ):
     ''' Python function that defines a simple encoder-decoder neural network design
 
         INPUT: image_dims  -> 2D array containing the input data dimensions as so:
@@ -49,8 +49,11 @@ def autoencoder_multigpu( input_dims, num_filters, num_gpus ):
                num_filters -> # of filters in the first convolutional layer
                num_gpus    -> number of GPUs to be used in the training
     '''
-    with tf.device("/cpu:0"):
+    if num_gpus == 1:
          model = autoencoder( input_dims, num_filters )
-         model = multi_gpu_model( model, gpus=num_gpus )
+    else:
+         with tf.device("/cpu:0"):
+             model = autoencoder( input_dims, num_filters )
+             model = multi_gpu_model( model, gpus=num_gpus )
 
     return model

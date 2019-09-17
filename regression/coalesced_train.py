@@ -8,13 +8,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob, sys, argparse
 
-sys.path.insert(0, '/home/ubuntu/BoM_observational_data_generation/neural_network_architecture/')
-from fully_connected import simple_net
+root_dir = '/home/ubuntu'
+data_dir = '/data'
 
-sys.path.insert(0, '/home/ubuntu/BoM_observational_data_generation/plotting_routines')
-from plotting_routines import plot_fc_model_errors
+dirpath = root_dir + '/BoM_observational_data_generation/neural_network_architecture/'
+sys.path.insert(0, dirpath)
+from fully_connected import create_simple_net
 
-num_test_points = 100
+##
+## Set some useful run constants
+##
+
+image_dims = np.empty((2,),dtype=np.int)
+image_dims[0] = 724016 
+image_dims[1] = 10 
+
+num_test_images = 100
 
 ##
 ## Look for any user specified commandline arguments
@@ -22,9 +31,9 @@ num_test_points = 100
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-b', '--batch_size', type=int, default=50, help="set the batch size used in training")
-parser.add_argument('-t', '--tolerance', type=float, default=0.001, help="set the tolerance used for the early stopping callback")
-parser.add_argument('-r', '--learn_rate', type=float, default=0.001, help="set the learn rate for the optimizer")
-parser.add_argument('-n', '--num_nodes', type=int, default=8, help="set the number of nodes in the first dense layer in the network.")
+parser.add_argument('-g', '--num_gpus', type=int, default=1, help="set the number of GPUS to be used in training")
+parser.add_argument('-t', '--stopping_tolerance', type=float, default=0.001, help="set the tolerance used for the early stopping callback")
+parser.add_argument('-n', '--num_nodes', type=int, default=16, help="set the number of nodes in the first dense layer in the network.")
 parser.add_argument('-l', '--num_layers', type=int, default=3, help="set the number of dense layers in the neural network.")
 args = parser.parse_args()
 
@@ -32,86 +41,131 @@ args = parser.parse_args()
 ## Form the neural network
 ##
 
-input_dims = np.empty((2,),dtype=np.int)
-input_dims[0] = 724016 
-input_dims[1] = 10
-
-model = simple_net( input_dims, args.num_layers, args.num_nodes )
-model.compile(loss='mean_squared_error', optimizer=Adam(lr=args.learn_rate), metrics=['mae'])
-model.summary()
-print('Neural network and model created')
+model = create_simple_net( image_dims, args.num_gpus, args.num_layers, args.num_nodes )
+model.compile(loss='mean_squared_error', optimizer=Adam(lr=0.0001), metrics=['mae'])
 
 ##
 ## Set up the training of the model
 ##
 
+earlystop = EarlyStopping( min_delta=args.stopping_tolerance,
+                           monitor='val_mean_absolute_error', 
+                           patience=5,
+                           mode='min' )
 history = History()
 
-earlystop = EarlyStopping( min_delta=args.tolerance,
-                           monitor='val_mean_absolute_error', 
-                           patience=3,
-                           mode='min' )
-
-filename = "model_weights_fully_connected.h5"
-checkpoint = ModelCheckpoint( filename, 
-                              monitor='val_mean_absolute_error', 
-                              save_best_only=True, 
-                              mode='min' )
-my_callbacks = [checkpoint, earlystop, history]
+my_callbacks = [earlystop, history]
+if args.num_gpus == 1:
+   filename = "fc_model_weights_" + str(args.num_layers) + "layers_" + str(args.num_nodes) + "nodes.h5"
+   checkpoint = ModelCheckpoint( filename, 
+                                 monitor='val_mean_absolute_error', 
+                                 save_best_only=True, 
+                                 mode='min' )
+   my_callbacks.append( checkpoint )
 
 ##
 ## Get a list of input data files
 ##
 
 input_file_list = []
-cmd_str = '/data/input_*.nc'
+cmd_str = data_dir + '/input*.nc'
 for fn in glob.iglob(cmd_str, recursive=True):
     input_file_list.append( fn )
 
 input_file_list = list(dict.fromkeys(input_file_list))
 shuffle( input_file_list )
 
-num_training_images = len(input_file_list) - num_test_points 
-training_input_file_list = input_file_list[ :num_training_images ]
-test_input_file_list = input_file_list[ num_training_images: ]
-print('%5d input datafiles located' % len(input_file_list))
+num_training_images = 50 #len(input_file_list) - num_test_images
 
-##
-## Perform the training
-##
+print(' ')
+print('*******************************************')
+print('  DATAFILE STATS')
+print('*******************************************')
+print(' ')
+print('    %3d input files located ' % len(input_file_list) )
+print('    %3d input files used for training' % num_training_images )
+print('    %3d input files used for testing' % num_test_images )
+print(' ')
 
-def read_input_file( filename ):
-    fid = nc.Dataset( filename, 'r' )
+
+
+##-------------------------------------------------------------------------------------------------
+##  TRAINING LOOP
+##-------------------------------------------------------------------------------------------------
+
+features = np.empty((num_training_images,image_dims[0],image_dims[1]), dtype=np.float32) 
+labels = np.empty((num_training_images,image_dims[0]), dtype=np.float32)
+
+# read in input data for current block of input files
+t1 = datetime.now()
+for n in range( num_training_images ):
+    fid = nc.Dataset( input_file_list[n] )
     x = np.array( fid['coalesced_brightness'] )
     y = np.array( fid['coalesced_precipitation'] )
-  
-    x = x[ np.newaxis,:,: ]
-    y = y[ np.newaxis,: ]
-
     fid.close()
-    return x, y
 
-
-x = np.empty((num_training_images,input_dims[0],10))
-y = np.empty((num_training_images,input_dims[0]))
-
-t1 = datetime.now()
-for n in range(num_training_images):
-    x[ n,:,: ], y[ n,: ] = read_input_file( training_input_file_list[n] )
+    features[ n,:,: ] = x[ np.newaxis,:,: ]
+    labels[ n,: ] = y[ np.newaxis,: ]
 io_time = (datetime.now()-t1 ).total_seconds()
-print( 'input training datafiles read' )
 
-hist = model.fit( x, y, 
-                  batch_size=args.batch_size,
-                  epochs=500, 
-                  verbose=2, 
-                  validation_split=.2,
-                  callbacks=my_callbacks, 
-                  shuffle=False )
+# perform training on the read input data
+t1 = datetime.now()
+hist = model.fit( features, labels, batch_size=args.batch_size, validation_split=0.2, epochs=250, callbacks=my_callbacks )
 training_time = (datetime.now()-t1 ).total_seconds()
 
-print("   training took %7.1f seconds" % training_time)
-print("   I/O took %7.1f seconds (%4.1f percent of total runtime)" % (io_time,100.0*(io_time/(io_time+training_time))))
+print(' ')
+print('*******************************************')
+print('  TRAINING STATS')
+print('*******************************************')
+print(' ')
+print("    training took %5.3f seconds" % training_time)
+print("    I/O took %5.3f seconds" % io_time)
+print(' ')
 
-plot_fc_model_errors( 'simple_fully_connected', hist )
+
+
+##-------------------------------------------------------------------------------------------------
+##  INFERENCE 
+##-------------------------------------------------------------------------------------------------
+
+features = np.empty((num_test_images,image_dims[0],image_dims[1]), dtype=np.float32) 
+labels = np.empty((num_test_images,image_dims[0]), dtype=np.float32)
+
+# read in input data for current block of input files
+t1 = datetime.now()
+for n in range( num_test_images ):
+    fid = nc.Dataset( input_file_list[num_training_images+n] )
+    x = np.array( fid['coalesced_brightness'] )
+    y = np.array( fid['coalesced_precipitation'] )
+    fid.close()
+
+    features[ n,:,: ] = x[ np.newaxis,:,: ]
+    labels[ n,: ] = y[ np.newaxis,: ]
+io_time = (datetime.now()-t1 ).total_seconds()
+
+# perform inference on the read input data
+t1 = datetime.now()
+output = model.predict( features, batch_size=args.batch_size )
+inference_time = (datetime.now()-t1 ).total_seconds()
+
+print(' ')
+print('*******************************************')
+print('  INFERENCE STATS')
+print('*******************************************')
+print(' ')
+print("    inference took %5.3f seconds" % inference_time)
+print("    I/O took %5.3f seconds" % io_time)
+
+
+
+##-------------------------------------------------------------------------------------------------
+##  COMPARISON STATISTICS 
+##-------------------------------------------------------------------------------------------------
+
+num_hits = np.sum( np.isclose( np.squeeze(output), labels, rtol=0.0, atol=0.0001) )
+num_values = num_test_images * image_dims[0] 
+accuracy = 100.0 * (float( num_hits ) / float(num_values))
+
+print("    prediction accuracy was %4.1f" % accuracy)
+print(' ')
 
