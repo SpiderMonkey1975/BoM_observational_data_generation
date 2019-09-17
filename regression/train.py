@@ -8,11 +8,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob, sys, argparse
 
-sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/neural_network_architecture/')
-from basic_autoencoder import autoencoder, autoencoder_multigpu
+root_dir = '/home/ubuntu'
+data_dir = '/data'
 
-sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/plotting_routines')
-from plotting_routines import plot_fc_model_errors 
+dirpath = root_dir + '/BoM_observational_data_generation/neural_network_architecture/'
+#sys.path.insert(0, '/group/director2107/mcheeseman/BoM_observational_data_generation/neural_network_architecture/')
+sys.path.insert(0, dirpath)
+from basic_autoencoder import autoencoder, autoencoder_multigpu
 
 image_dims = np.empty((3,),dtype=np.int)
 image_dims[0] = 2050
@@ -72,7 +74,7 @@ else:
 ##
 
 input_file_list = []
-cmd_str = '/group/director2107/mcheeseman/bom_data/input*.nc'
+cmd_str = data_dir + '/input*.nc'
 for fn in glob.iglob(cmd_str, recursive=True):
     input_file_list.append( fn )
 

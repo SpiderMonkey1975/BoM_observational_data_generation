@@ -17,22 +17,26 @@ def autoencoder( image_dims, num_filters ):
     net = BatchNormalization(axis=3)( input_layer )
 
     # Encoding section
-    net = Conv2D( num_filters, 5, strides=2, activation='relu', padding='valid')( net )
+    net = Conv2D( num_filters, 5, strides=5, activation='relu', padding='same')( net )
+#    net = BatchNormalization(axis=3)( net )
+    net = Conv2D( num_filters*2, 5, strides=5, activation='relu', padding='same')( net )
     net = BatchNormalization(axis=3)( net )
-    net = Conv2D( num_filters*2, 3, strides=5, activation='relu', padding='valid')( net )
-    net = BatchNormalization(axis=3)( net )
-    net = Conv2D( num_filters*4, 5, strides=5, activation='relu', padding='valid')( net )
-    net = BatchNormalization(axis=3)( net )
+    net = Conv2D( num_filters*4, 2, strides=2, activation='relu', padding='same')( net )
+#    net = BatchNormalization(axis=3)( net )
+    net = Conv2D( num_filters*8, 2, strides=1, activation='relu', padding='same')( net )
+    net = Conv2D( num_filters*16, 2, strides=1, activation='relu', padding='same')( net )
 
     # Decoding section
-    net = Conv2DTranspose( num_filters*2, 5, strides=5, activation='relu', padding='valid')( net )
+    net = Conv2DTranspose( num_filters*8, 2, strides=1, activation='relu', padding='same')( net )
+#    net = BatchNormalization(axis=3)( net )
+    net = Conv2DTranspose( num_filters*4, 2, strides=2, activation='relu', padding='same')( net )
     net = BatchNormalization(axis=3)( net )
-    net = Conv2DTranspose( num_filters, 3, strides=5, activation='relu', padding='valid')( net )
-    net = BatchNormalization(axis=3)( net )
-    net = Conv2DTranspose( 1, 5, strides=2, activation='relu', padding='valid')( net )
+    net = Conv2DTranspose( num_filters*2, 5, strides=5, activation='relu', padding='same')( net )
+#    net = BatchNormalization(axis=3)( net )
+    net = Conv2DTranspose( 1, 5, strides=5, activation='relu', padding='same')( net )
     net = BatchNormalization(axis=3)( net )
 
-    net = Conv2D( 1, 4, strides=1, activation='relu', padding='valid')( net )
+    net = Conv2D( 1, 4, strides=1, activation='relu', padding='same')( net )
     return Model( inputs=input_layer, outputs=net )
 
 
