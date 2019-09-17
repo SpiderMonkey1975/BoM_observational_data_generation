@@ -1,5 +1,7 @@
+import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, BatchNormalization, Conv2D, Conv2DTranspose
+from tensorflow.keras.utils import multi_gpu_model
 
 def autoencoder( image_dims, num_filters ):
     ''' Python function that defines a simple encoder-decoder neural network design
@@ -33,3 +35,18 @@ def autoencoder( image_dims, num_filters ):
     net = Conv2D( 1, 4, strides=1, activation='relu', padding='valid')( net )
     return Model( inputs=input_layer, outputs=net )
 
+
+def autoencoder_multigpu( input_dims, num_filters, num_gpus ):
+    ''' Python function that defines a simple encoder-decoder neural network design
+
+        INPUT: image_dims  -> 2D array containing the input data dimensions as so:
+                              dim[0] => number of nonzero significant data points
+                              dim[1] => number of channels in satellite input
+               num_filters -> # of filters in the first convolutional layer
+               num_gpus    -> number of GPUs to be used in the training
+    '''
+    with tf.device("/cpu:0"):
+         model = autoencoder( input_dims, num_filters )
+         model = multi_gpu_model( model, gpus=num_gpus )
+
+    return model
