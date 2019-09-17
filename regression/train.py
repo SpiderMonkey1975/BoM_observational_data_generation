@@ -97,6 +97,13 @@ print(' ')
 ##  TRAINING LOOP
 ##-------------------------------------------------------------------------------------------------
 
+def read_input_file( filename ):
+    fid = nc.Dataset( input_file_list[idx+n] )
+    x = np.array( fid['brightness'] )
+    y = np.array( fid['precipitation'] )
+    fid.close()
+    return x[ np.newaxis,:,:,: ],y[ np.newaxis,:,: ]
+
 features = np.empty((args.num_files,image_dims[0],image_dims[1],image_dims[2]), dtype=np.float32)
 labels = np.empty((args.num_files,image_dims[0],image_dims[1]), dtype=np.float32)
 
@@ -112,18 +119,13 @@ for nn in range( num_rounds ):
     # read in input data for current block of input files
     t1 = datetime.now()
     for n in range( args.num_files ):
-        fid = nc.Dataset( input_file_list[idx+n] )
-        x = np.array( fid['brightness'] )
-        y = np.array( fid['precipitation'] )
-        fid.close()
-
-        features[ n,:,:,: ] = x[ np.newaxis,:,:,: ]
-        labels[ n,:,: ] = y[ np.newaxis,:,: ]
+        features[ n,:,:,: ],labels[ n,:,: ] = read_input_file( input_file_list[idx+n] )
     io_time = (datetime.now()-t1 ).total_seconds()
 
     # perform training on the read input data
     t1 = datetime.now()
-    hist = model.fit( features, labels[ :,:,:,np.newaxis ], batch_size=args.batch_size, validation_split=0.2, epochs=250, callbacks=my_callbacks )
+    #hist = model.fit( features, labels[ :,:,:,np.newaxis ], batch_size=args.batch_size, validation_split=0.2, epochs=250, callbacks=my_callbacks )
+    hist = model.fit( features, labels, batch_size=args.batch_size, validation_split=0.2, epochs=250, callbacks=my_callbacks )
     training_time = (datetime.now()-t1 ).total_seconds()
 
     # update timing counts
@@ -148,16 +150,13 @@ print(' ')
 ##  INFERENCE 
 ##-------------------------------------------------------------------------------------------------
 
+features = np.empty((num_training_images,image_dims[0],image_dims[1],image_dims[2]), dtype=np.float32)
+labels = np.empty((num_training_images,image_dims[0],image_dims[1]), dtype=np.float32)
+
 # read in input data for current block of input files
 t1 = datetime.now()
 for n in range( args.num_files ):
-    fid = nc.Dataset( input_file_list[num_training_images+n] )
-    x = np.array( fid['brightness'] )
-    y = np.array( fid['precipitation'] )
-    fid.close()
-
-    features[ n,:,:,: ] = x[ np.newaxis,:,:,: ]
-    labels[ n,:,: ] = y[ np.newaxis,:,: ]
+    features[ n,:,:,: ],labels[ n,:,: ] = read_input_file( input_file_list[num_training_images+n] )
 io_time = (datetime.now()-t1 ).total_seconds()
 
 # perform inference on the read input data
