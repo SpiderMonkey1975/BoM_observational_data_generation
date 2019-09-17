@@ -75,7 +75,7 @@ for fn in glob.iglob(cmd_str, recursive=True):
 input_file_list = list(dict.fromkeys(input_file_list))
 shuffle( input_file_list )
 
-num_training_images = 50 #len(input_file_list) - num_test_images
+num_training_images = len(input_file_list) - num_test_images
 
 print(' ')
 print('*******************************************')
@@ -93,19 +93,21 @@ print(' ')
 ##  TRAINING LOOP
 ##-------------------------------------------------------------------------------------------------
 
+def read_input_file( filename ):
+    fid = nc.Dataset( filename )
+    x = np.array( fid['coalesced_brightness'] )
+    y = np.array( fid['coalesced_precipitation'] )
+    fid.close()
+    return x[ np.newaxis,:,: ], y[ np.newaxis,: ]
+
+
 features = np.empty((num_training_images,image_dims[0],image_dims[1]), dtype=np.float32) 
 labels = np.empty((num_training_images,image_dims[0]), dtype=np.float32)
 
 # read in input data for current block of input files
 t1 = datetime.now()
 for n in range( num_training_images ):
-    fid = nc.Dataset( input_file_list[n] )
-    x = np.array( fid['coalesced_brightness'] )
-    y = np.array( fid['coalesced_precipitation'] )
-    fid.close()
-
-    features[ n,:,: ] = x[ np.newaxis,:,: ]
-    labels[ n,: ] = y[ np.newaxis,: ]
+    features[ n,:,: ],labels[ n,: ] = read_input_file( input_file_list[n] )
 io_time = (datetime.now()-t1 ).total_seconds()
 
 # perform training on the read input data
@@ -134,13 +136,7 @@ labels = np.empty((num_test_images,image_dims[0]), dtype=np.float32)
 # read in input data for current block of input files
 t1 = datetime.now()
 for n in range( num_test_images ):
-    fid = nc.Dataset( input_file_list[num_training_images+n] )
-    x = np.array( fid['coalesced_brightness'] )
-    y = np.array( fid['coalesced_precipitation'] )
-    fid.close()
-
-    features[ n,:,: ] = x[ np.newaxis,:,: ]
-    labels[ n,: ] = y[ np.newaxis,: ]
+    features[ n,:,: ],labels[ n,: ] = read_input_file( input_file_list[num_training_images+n] )
 io_time = (datetime.now()-t1 ).total_seconds()
 
 # perform inference on the read input data
