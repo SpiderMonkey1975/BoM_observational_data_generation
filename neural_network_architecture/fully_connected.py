@@ -19,9 +19,9 @@ def simple_net( input_dims, num_layers, num_units ):
 
     for n in range(num_layers):
         net = Dense( units=num_units, activation='relu' )( net )
-        net = Dropout(0.2)( net )
         num_units = num_units * 2
 
+    net = Dropout(0.2)( net )
     net = Dense( units=input_dims[0], activation='relu' )( net )
     return Model( inputs=input_layer, outputs=net )
 

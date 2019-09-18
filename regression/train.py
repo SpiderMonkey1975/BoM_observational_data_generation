@@ -8,11 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob, sys, argparse
 
-root_dir = '/home/ubuntu'
-data_dir = '/data'
-
-dirpath = root_dir + '/BoM_observational_data_generation/neural_network_architecture/'
-sys.path.insert(0, dirpath)
+sys.path.insert(0, '/src/neural_network_architecture')
 from basic_autoencoder import create_autoencoder
 from unet import create_unet
 
@@ -72,8 +68,7 @@ if args.num_gpus == 1:
 ##
 
 input_file_list = []
-cmd_str = data_dir + '/input*.nc'
-for fn in glob.iglob(cmd_str, recursive=True):
+for fn in glob.iglob('/data/input*.nc', recursive=True):
     input_file_list.append( fn )
 
 input_file_list = list(dict.fromkeys(input_file_list))
@@ -124,8 +119,7 @@ for nn in range( num_rounds ):
 
     # perform training on the read input data
     t1 = datetime.now()
-    #hist = model.fit( features, labels[ :,:,:,np.newaxis ], batch_size=args.batch_size, validation_split=0.2, epochs=250, callbacks=my_callbacks )
-    hist = model.fit( features, labels, batch_size=args.batch_size, validation_split=0.2, epochs=250, callbacks=my_callbacks )
+    hist = model.fit( features, labels, batch_size=args.batch_size*args.num_gpus, validation_split=0.2, epochs=250, callbacks=my_callbacks )
     training_time = (datetime.now()-t1 ).total_seconds()
 
     # update timing counts
@@ -161,7 +155,7 @@ io_time = (datetime.now()-t1 ).total_seconds()
 
 # perform inference on the read input data
 t1 = datetime.now()
-output = model.predict( features, batch_size=args.batch_size )
+output = model.predict( features, batch_size=args.batch_size*args.num_gpus )
 inference_time = (datetime.now()-t1 ).total_seconds()
 
 print(' ')
