@@ -21,14 +21,14 @@ image_dims[0] = 2050
 image_dims[1] = 2450
 image_dims[2] = 10 
 
-num_test_images = 100
+num_test_images = 63 
 
 ##
 ## Look for any user specified commandline arguments
 ##
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-f', '--num_filter', type=int, default=16, help="set initial number of filters used in CNN layers for the neural networks")
+parser.add_argument('-f', '--num_filter', type=int, default=8, help="set initial number of filters used in CNN layers for the neural networks")
 parser.add_argument('-v', '--verbose', type=int, default=0, help="set to 1 if additional debugging info desired")
 parser.add_argument('-l', '--learn_rate', type=float, default=0.001, help="set learn rate for the optimizer")
 parser.add_argument('-t', '--stopping_tolerance', type=float, default=0.001, help="set tolerance limit for early stopping callback in training")

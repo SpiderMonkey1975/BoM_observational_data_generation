@@ -1,39 +1,49 @@
 #!/bin/bash --login
-#SBATCH --partition=gpuq
 #SBATCH --nodes=1
-#SBATCH --gres=gpu:1
-#SBATCH --constraint=p100
-#SBATCH --time=03:00:00
-#SBATCH --account=director2107
-#SBATCH --export=MYSCRATCH,MYGROUP
+#SBATCH --gres=gpu:4
+#SBATCH --time=01:00:00
+#SBATCH --export=SCRATCH1DIR
+#SBATCH --mem=100gb
 
-CONTAINER=/group/director2107/mcheeseman/tensorflow_1.14.0-gpu-py3.sif
-BATCH_SIZE=128
+##====================================================================================================
+##---------------------------              User configurations             ---------------------------
+##====================================================================================================
+
+# Name and location of the Tensorflow Singularity container
+CONTAINER=$SCRATCH1DIR/tensorflow_1.14.0-gpu-py3.sif
+
+# Set the batch size used by each GPU
+BATCH_SIZE=50
+
+# Set number of input files to be read simultaneously
+NUM_FILES=50
+
+# Tolerance to be used for the early stopping callback
+STOPPING_TOLERANCE=0.001
+
+# Directory containing the input data files
+INPUT_DIR=$SCRATCH1DIR/bom_data
+
+# Directory containing the Python module files
+SRC_DIR=$SCRATCH1DIR/BoM_observational_data_generation
 
 ##====================================================================================================
 ##---------------------------    Do not change anything below this line    ---------------------------
 ##====================================================================================================
 
-##
-## Set up Singularity
-##
+# Set up Singularity
+module load singularity/3.2.1
+export SINGULARITY_CACHEDIR=$SCRATCH1DIR
+export SINGULARITY_TMPDIR=$SCRATCH1DIR
 
-module load singularity/3.3.0
-
-export SINGULARITY_CACHEDIR=$MYGROUP
-export SINGULARITY_TMPDIR=$MYSCRATCH
-
-##
-## Tensorflow configurations
-##
-
+# Tensorflow configurations
 export XLA_FLAGS=--xla_hlo_profile
-export TF_XLA_FLAGS=--tf_xla_cpu_global_jit 
+export TF_XLA_FLAGS=--tf_xla_cpu_global_jit
 
-##
-## Determine number of GPUs present in SLURM allocation
-##
-
+# Determine number of GPUs present in SLURM allocation
 IFS=',' read -ra gpus <<< "$CUDA_VISIBLE_DEVICES"
 
-srun -n 1 --export=ALL -u singularity exec --nv --bind /group $CONTAINER python3 ./coalesced_train.py -g ${#gpus[@]} -b $BATCH_SIZE
+# Run the Tensorflow job
+srun -n 1 --export=ALL -u singularity exec --nv --bind $INPUT_DIR:/data,$SRC_DIR:/src $CONTAINER python3 ./coalesced_train.py -g ${#gpus[@]} -b $BATCH_SIZE -t $STOPPING_TOLERANCE
+#srun -n 1 --export=ALL -u singularity exec --nv --bind $INPUT_DIR:/data,$SRC_DIR:/src $CONTAINER python3 ./train.py -g ${#gpus[@]} -b $BATCH_SIZE -t $STOPPING_TOLERANCE -z $NUM_FILES
+

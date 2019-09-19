@@ -19,7 +19,7 @@ image_dims = np.empty((2,),dtype=np.int)
 image_dims[0] = 724016 
 image_dims[1] = 10 
 
-num_test_images = 88 
+num_test_images = 63 
 
 ##
 ## Look for any user specified commandline arguments
@@ -30,7 +30,7 @@ parser.add_argument('-b', '--batch_size', type=int, default=100, help="set the b
 parser.add_argument('-g', '--num_gpus', type=int, default=1, help="set the number of GPUS to be used in training")
 parser.add_argument('-t', '--stopping_tolerance', type=float, default=0.0005, help="set the tolerance used for the early stopping callback")
 parser.add_argument('-n', '--num_nodes', type=int, default=8, help="set the number of nodes in the first dense layer in the network.")
-parser.add_argument('-l', '--num_layers', type=int, default=4, help="set the number of dense layers in the neural network.")
+parser.add_argument('-l', '--num_layers', type=int, default=3, help="set the number of dense layers in the neural network.")
 args = parser.parse_args()
 
 ##
@@ -69,6 +69,8 @@ for fn in glob.iglob('/data/input*.nc', recursive=True):
 
 input_file_list = list(dict.fromkeys(input_file_list))
 shuffle( input_file_list )
+
+input_file_list = input_file_list[ :100 ]
 
 num_training_images = len(input_file_list) - num_test_images
 
